@@ -27,5 +27,5 @@ export async function clearSession(request) {
 }
 
 export function sessionCookie(value, maxAge = 7 * 24 * 60 * 60) {
-  return `movie_vault_session=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+  return `movie_vault_session=${value}; Max-Age=${maxAge}; Path=/; HttpOnly; Secure; SameSite=None`;
 }
