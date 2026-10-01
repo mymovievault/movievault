@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "eslint": "^9.0.0"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0"
   }
 }
