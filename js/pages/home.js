@@ -4,6 +4,6 @@ import { movieForm } from "../components/movie-form.js";
 
 export function homePage(library) {
   const stats = library.stats();
-  const watched = library.all().filter((entry) => entry.status === "watched").slice(0, 3);
+  const watched = library.all().filter((entry) => entry.status === "watched" || entry.status === "watching").slice(0, 3);
   return `<main><section class="hero"><p class="eyebrow">YOUR PERSONAL FILM ARCHIVE</p><h1>A better place<br /><em>to remember</em> movies.</h1><p class="hero-copy">A quiet, considered home for the films you have seen, the ones waiting for you, and everything in between.</p><div class="hero-actions"><a class="button button-primary" href="#/library">Open watched <span>↗</span></a><a class="text-link" href="#/wishlist">See your watchlist</a></div></section>${movieForm()}${statsGrid(stats)}<section class="section-block"><div class="section-heading"><div><p class="eyebrow">RECENTLY LOGGED</p><h2>Favourites worth revisiting</h2></div><a class="text-link" href="#/library">View all <span>↗</span></a></div><div class="movie-grid">${watched.map(movieCard).join("")}</div></section></main>`;
 }
