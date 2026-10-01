@@ -1,10 +1,10 @@
 import { imageUrl } from "../api/tmdb.js";
 
 export function movieForm() {
-  return `<details class="add-movie-panel"><summary class="button button-primary">Add a movie <span>+</span></summary><form class="movie-form" data-add-movie><div class="form-heading"><p class="eyebrow">NEW ENTRY</p><h2>Log what you are watching</h2><p class="form-hint">Search TMDB by title to fill in the film details, then add your viewing information.</p></div><div class="form-grid"><label class="form-wide">Title or series<input name="title" data-title-search required autocomplete="off" placeholder="Start typing a title..." /><div class="search-results" data-title-results></div></label><label>Year<input name="year" data-year type="number" min="1888" max="2100" placeholder="2026" /></label><label>Status<select name="status"><option value="watching">Watching now</option><option value="watched">Watched</option><option value="wishlist">Want to watch</option><option value="upcoming">Upcoming</option></select></label><label>Where are you watching?<select name="watchingMode" data-watching-mode><option value="ott">OTT / streaming</option><option value="theatre">Theatre</option></select></label><label data-ott-field>OTT platform<input name="ottPlatform" placeholder="Netflix, Prime Video..." /></label><label data-theatre-field hidden>Theatre name<input name="theatreName" placeholder="Your theatre" /></label><label>Your rating<input name="rating" type="number" min="1" max="10" step="1" placeholder="1–10" /></label><label>Watched date<input name="watchedDate" type="date" /></label><label class="form-wide">Poster URL<input name="poster" data-poster type="url" placeholder="Filled from TMDB or add your own" /></label><label class="form-wide">Notes<textarea name="notes" rows="3" placeholder="A quick note for future you..."></textarea></label><label class="form-wide">Tags<input name="tags" placeholder="favourite, rewatch" /></label></div><div class="form-actions"><button class="button button-primary" type="submit">Save to vault <span>↗</span></button><button class="text-link" type="reset">Clear form</button></div></form></details>`;
+  return `<details class="add-movie-panel"><summary class="button button-primary">Add a movie <span>+</span></summary><form class="movie-form" data-add-movie><div class="form-heading"><p class="eyebrow">NEW ENTRY</p><h2>Log what you are watching</h2><p class="form-hint">Search TMDB by title to fill in the film details, then add your viewing information.</p></div><div class="form-grid"><label class="form-wide">Title or series<input name="title" data-title-search required autocomplete="off" placeholder="Start typing a title..." /><div class="search-results" data-title-results></div></label><label>Year<input name="year" data-year type="number" min="1888" max="2100" placeholder="2026" /></label><label>Status<select name="status"><option value="watching">Watching now</option><option value="watched">Watched</option><option value="wishlist">Want to watch</option><option value="upcoming">Upcoming</option></select></label><label>Where are you watching?<select name="watchingMode" data-watching-mode><option value="ott">OTT / streaming</option><option value="theatre">Theatre</option></select></label><label data-ott-field>OTT platform<input name="ottPlatform" placeholder="Netflix, Prime Video..." /></label><label data-theatre-field hidden>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" placeholder="Search a theatre..." /><div class="search-results" data-theatre-results></div></label><label>Your rating<input name="rating" type="number" min="1" max="10" step="1" placeholder="1–10" /></label><label>Watched date<input name="watchedDate" type="date" /></label><label class="form-wide">Poster URL<input name="poster" data-poster type="url" placeholder="Filled from TMDB or add your own" /></label><label class="form-wide">Notes<textarea name="notes" rows="3" placeholder="A quick note for future you..."></textarea></label><label class="form-wide">Tags<input name="tags" placeholder="favourite, rewatch" /></label></div><div class="form-actions"><button class="button button-primary" type="submit">Save to vault <span>↗</span></button><button class="text-link" type="reset">Clear form</button></div></form></details>`;
 }
 
-export function bindMovieForm(root, onSubmit, tmdbClient) {
+export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient) {
   const form = root.querySelector("[data-add-movie]");
   if (!form) return;
   const mode = form.querySelector("[data-watching-mode]");
@@ -17,10 +17,40 @@ export function bindMovieForm(root, onSubmit, tmdbClient) {
   };
   mode.addEventListener("change", updateLocationFields);
   bindTitleSearch(form, tmdbClient);
+  bindTheatreSearch(form, theatreClient);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const metadata = form.dataset.metadata ? JSON.parse(form.dataset.metadata) : {};
     onSubmit(Object.fromEntries(new FormData(form)), metadata);
+  });
+}
+
+function bindTheatreSearch(form, theatreClient) {
+  const input = form.querySelector("[data-theatre-search]");
+  const results = form.querySelector("[data-theatre-results]");
+  if (!input || !theatreClient) return;
+  let timer;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    const query = input.value.trim();
+    if (query.length < 3) {
+      results.innerHTML = "";
+      return;
+    }
+    results.innerHTML = `<p class="search-status">Searching nearby theatres...</p>`;
+    timer = setTimeout(async () => {
+      try {
+        const matches = await theatreClient.search(query);
+        results.innerHTML = matches.length ? matches.map((place, index) => `<button type="button" class="search-result theatre-result" data-theatre-index="${index}"><span><strong>${place.name || place.display_name.split(",")[0]}</strong><small>${place.display_name}</small></span></button>`).join("") : `<p class="search-status">No theatres found.</p>`;
+        results.querySelectorAll("[data-theatre-index]").forEach((button) => button.addEventListener("click", () => {
+          const place = matches[Number(button.dataset.theatreIndex)];
+          input.value = place.display_name;
+          results.innerHTML = `<p class="search-status is-selected">Selected ${input.value}</p>`;
+        }));
+      } catch (error) {
+        results.innerHTML = `<p class="search-status">Theatre search is unavailable. You can enter the name manually.</p>`;
+      }
+    }, 500);
   });
 }
 

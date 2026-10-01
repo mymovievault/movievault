@@ -10,6 +10,7 @@ import { bindFilters } from "./components/filters.js";
 import { bindMovieForm } from "./components/movie-form.js";
 import { createTmdbClient } from "./api/tmdb.js";
 import { TMDB_READ_TOKEN } from "./config.js";
+import { createTheatreClient } from "./api/places.js";
 
 const app = document.querySelector("#app");
 
@@ -17,14 +18,15 @@ async function boot() {
   try {
     const library = createLibrary(await loadFlatFile());
     const tmdbClient = TMDB_READ_TOKEN ? createTmdbClient({ token: TMDB_READ_TOKEN }) : null;
+    const theatreClient = createTheatreClient();
     const render = (content, active) => {
       app.innerHTML = shell(content, active, library);
       bindNavigation();
-      bindShelfControls(library, render, tmdbClient);
+      bindShelfControls(library, render, tmdbClient, theatreClient);
     };
 
     registerRoute("/", () => render(homePage(library), "/"));
-    registerRoute("/library", () => render(libraryPage(library, "watched", "Watched"), "/library"));
+    registerRoute("/library", () => render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library"));
     registerRoute("/wishlist", () => render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist"));
     registerRoute("/upcoming", () => render(upcomingPage(library, "upcoming", "Upcoming"), "/upcoming"));
     registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
@@ -51,7 +53,7 @@ function bindNavigation() {
   document.querySelectorAll("[data-route]").forEach((link) => link.addEventListener("click", () => { window.location.hash = link.dataset.route; }));
 }
 
-function bindShelfControls(library, render, tmdbClient) {
+function bindShelfControls(library, render, tmdbClient, theatreClient) {
   const root = document.querySelector("main");
   if (!root) return;
   bindFilters(root);
@@ -72,8 +74,10 @@ function bindShelfControls(library, render, tmdbClient) {
       ottPlatform: formData.ottPlatform.trim(),
       theatreName: formData.theatreName.trim(),
     });
-    render(homePage(library), "/");
-  }, tmdbClient);
+    const shelf = formData.status === "wishlist" ? "/wishlist" : formData.status === "upcoming" ? "/upcoming" : "/library";
+    const page = shelf === "/wishlist" ? wishlistPage(library, "wishlist", "Wishlist") : shelf === "/upcoming" ? upcomingPage(library, "upcoming", "Upcoming") : libraryPage(library, ["watched", "watching"], "Watched & Watching");
+    render(page, shelf);
+  }, tmdbClient, theatreClient);
   const search = root.querySelector("[data-search]");
   if (search) search.addEventListener("input", () => {
     const query = search.value.toLowerCase();
