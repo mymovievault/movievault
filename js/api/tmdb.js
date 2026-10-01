@@ -24,6 +24,7 @@ export function createTmdbClient({ token } = {}) {
       const director = data.credits?.crew?.find((person) => person.job === "Director");
       return {
         tmdbId: data.id,
+        mediaType: item.media_type,
         title: data.title || data.name,
         year: Number((data.release_date || data.first_air_date || "").slice(0, 4)) || null,
         poster: imageUrl(data.poster_path),
@@ -34,6 +35,17 @@ export function createTmdbClient({ token } = {}) {
         tmdbRating: data.vote_average || null,
         director: director?.name || "",
       };
+    },
+    async providers(item, region = "IN") {
+      if (!token || !item.mediaType) return [];
+      const data = await request(`/${item.mediaType}/${item.tmdbId}/watch/providers`);
+      const regionData = data.results?.[region] || {};
+      return [
+        ...(regionData.flatrate || []).map((provider) => ({ ...provider, availability: "streaming" })),
+        ...(regionData.free || []).map((provider) => ({ ...provider, availability: "free" })),
+        ...(regionData.rent || []).map((provider) => ({ ...provider, availability: "rent" })),
+        ...(regionData.buy || []).map((provider) => ({ ...provider, availability: "buy" })),
+      ].filter((provider, index, providers) => providers.findIndex((item) => item.provider_id === provider.provider_id) === index);
     },
   };
 }

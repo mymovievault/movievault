@@ -1,7 +1,7 @@
 import { imageUrl } from "../api/tmdb.js";
 
 export function movieForm() {
-  return `<details class="add-movie-panel"><summary class="button button-primary">Add a movie <span>+</span></summary><form class="movie-form" data-add-movie><div class="form-heading"><p class="eyebrow">NEW ENTRY</p><h2>Log what you are watching</h2><p class="form-hint">Search TMDB by title to fill in the film details, then add your viewing information.</p></div><div class="form-grid"><label class="form-wide">Title or series<input name="title" data-title-search required autocomplete="off" placeholder="Start typing a title..." /><div class="search-results" data-title-results></div></label><label>Status<select name="status"><option value="watching">Watching now</option><option value="watched">Watched</option><option value="wishlist">Want to watch</option><option value="upcoming">Upcoming</option></select></label><label>Where are you watching?<select name="watchingMode" data-watching-mode><option value="ott">OTT / streaming</option><option value="theatre">Theatre</option></select></label><label data-ott-field>OTT platform<input name="ottPlatform" placeholder="Netflix, Prime Video..." /></label><label data-theatre-field hidden>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" placeholder="Search a theatre..." /><div class="search-results" data-theatre-results></div></label><label>Your rating<input name="rating" type="number" min="1" max="10" step="1" placeholder="1–10" /></label><label>Watched date<input name="watchedDate" type="date" /></label><input name="poster" data-poster type="hidden" /><label class="form-wide">Notes<textarea name="notes" rows="3" placeholder="A quick note for future you..."></textarea></label><label class="form-wide">Tags<input name="tags" placeholder="favourite, rewatch" /></label></div><div class="form-actions"><button class="button button-primary" type="submit">Save to vault <span>↗</span></button><button class="text-link" type="reset">Clear form</button></div></form></details>`;
+  return `<details class="add-movie-panel"><summary class="button button-primary">Add a movie <span>+</span></summary><form class="movie-form" data-add-movie><div class="form-heading"><p class="eyebrow">NEW ENTRY</p><h2>Log what you are watching</h2><p class="form-hint">Search TMDB by title to fill in the film details, then add your viewing information.</p></div><div class="form-grid"><label class="form-wide">Title or series<input name="title" data-title-search required autocomplete="off" placeholder="Start typing a title..." /><div class="search-results" data-title-results></div></label><label>Status<select name="status"><option value="watching">Watching now</option><option value="watched">Watched</option><option value="wishlist">Want to watch</option><option value="upcoming">Upcoming</option></select></label><label>Where are you watching?<select name="watchingMode" data-watching-mode><option value="ott">OTT / streaming</option><option value="theatre">Theatre</option></select></label><label data-ott-field>Region<select name="watchRegion" data-watch-region><option value="IN">India</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option></select></label><label data-ott-field>OTT platform<input name="ottPlatform" data-ott-platform placeholder="Select a provider after choosing a title" /><div class="search-results" data-ott-results></div></label><input name="ottAvailability" data-ott-availability type="hidden" /><label data-theatre-field hidden>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" placeholder="Search a theatre..." /><div class="search-results" data-theatre-results></div></label><label>Your rating<input name="rating" type="number" min="1" max="10" step="1" placeholder="1–10" /></label><label>Watched date<input name="watchedDate" type="date" /></label><input name="poster" data-poster type="hidden" /><label class="form-wide">Notes<textarea name="notes" rows="3" placeholder="A quick note for future you..."></textarea></label><label class="form-wide">Tags<input name="tags" placeholder="favourite, rewatch" /></label></div><div class="form-actions"><button class="button button-primary" type="submit">Save to vault <span>↗</span></button><button class="text-link" type="reset">Clear form</button></div></form></details>`;
 }
 
 export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient) {
@@ -17,6 +17,7 @@ export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient) {
   };
   mode.addEventListener("change", updateLocationFields);
   bindTitleSearch(form, tmdbClient);
+  bindProviderSearch(form, tmdbClient);
   bindTheatreSearch(form, theatreClient);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -84,6 +85,7 @@ function bindTitleSearch(form, tmdbClient) {
           input.value = details.title;
           form.querySelector("[data-poster]").value = details.poster || "";
           results.innerHTML = `<p class="search-status is-selected">Selected ${details.title}</p><p class="metadata-preview">${details.year || ""} ${details.genres?.length ? `• ${details.genres.join(" / ")}` : ""} ${details.runtime ? `• ${details.runtime} min` : ""}</p>`;
+          loadProviders(form, tmdbClient, details);
         }));
       } catch {
         if (currentRequest !== requestId) return;
@@ -91,4 +93,31 @@ function bindTitleSearch(form, tmdbClient) {
       }
     }, 300);
   });
+}
+
+function bindProviderSearch(form, tmdbClient) {
+  const region = form.querySelector("[data-watch-region]");
+  if (!region || !tmdbClient) return;
+  region.addEventListener("change", () => {
+    const metadata = form.dataset.metadata ? JSON.parse(form.dataset.metadata) : null;
+    if (metadata) loadProviders(form, tmdbClient, metadata);
+  });
+}
+
+async function loadProviders(form, tmdbClient, metadata) {
+  const results = form.querySelector("[data-ott-results]");
+  const region = form.querySelector("[data-watch-region]").value;
+  results.innerHTML = `<p class="search-status">Checking OTT availability...</p>`;
+  try {
+    const providers = await tmdbClient.providers(metadata, region);
+    results.innerHTML = providers.length ? providers.map((provider, index) => `<button type="button" class="search-result provider-result" data-provider-index="${index}"><span><strong>${provider.provider_name}</strong><small>${provider.availability}</small></span></button>`).join("") : `<p class="search-status">No provider data for this region.</p>`;
+    results.querySelectorAll("[data-provider-index]").forEach((button) => button.addEventListener("click", () => {
+      const provider = providers[Number(button.dataset.providerIndex)];
+      form.querySelector("[data-ott-platform]").value = provider.provider_name;
+      form.querySelector("[data-ott-availability]").value = provider.availability;
+      results.innerHTML = `<p class="search-status is-selected">Selected ${provider.provider_name} / ${provider.availability}</p>`;
+    }));
+  } catch {
+    results.innerHTML = `<p class="search-status">OTT availability is unavailable. Enter the platform manually.</p>`;
+  }
 }

@@ -72,6 +72,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient) {
       tags: formData.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
       watchingMode: formData.watchingMode,
       ottPlatform: formData.ottPlatform.trim(),
+      ottAvailability: formData.ottAvailability,
       theatreName: formData.theatreName.trim(),
     });
     try {
