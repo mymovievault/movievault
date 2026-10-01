@@ -30,8 +30,10 @@ function bindTheatreSearch(form, theatreClient) {
   const results = form.querySelector("[data-theatre-results]");
   if (!input || !theatreClient) return;
   let timer;
+  let requestId = 0;
   input.addEventListener("input", () => {
     clearTimeout(timer);
+    const currentRequest = ++requestId;
     const query = input.value.trim();
     if (query.length < 3) {
       results.innerHTML = "";
@@ -41,13 +43,15 @@ function bindTheatreSearch(form, theatreClient) {
     timer = setTimeout(async () => {
       try {
         const matches = await theatreClient.search(query);
+        if (currentRequest !== requestId) return;
         results.innerHTML = matches.length ? matches.map((place, index) => `<button type="button" class="search-result theatre-result" data-theatre-index="${index}"><span><strong>${place.name || place.display_name.split(",")[0]}</strong><small>${place.display_name}</small></span></button>`).join("") : `<p class="search-status">No theatres found.</p>`;
         results.querySelectorAll("[data-theatre-index]").forEach((button) => button.addEventListener("click", () => {
           const place = matches[Number(button.dataset.theatreIndex)];
           input.value = place.display_name;
           results.innerHTML = `<p class="search-status is-selected">Selected ${input.value}</p>`;
         }));
-      } catch (error) {
+      } catch {
+        if (currentRequest !== requestId) return;
         results.innerHTML = `<p class="search-status">Theatre search is unavailable. You can enter the name manually.</p>`;
       }
     }, 500);
@@ -59,8 +63,10 @@ function bindTitleSearch(form, tmdbClient) {
   const results = form.querySelector("[data-title-results]");
   if (!tmdbClient) return;
   let timer;
+  let requestId = 0;
   input.addEventListener("input", () => {
     clearTimeout(timer);
+    const currentRequest = ++requestId;
     const query = input.value.trim();
     if (query.length < 2) {
       results.innerHTML = "";
@@ -70,6 +76,7 @@ function bindTitleSearch(form, tmdbClient) {
     timer = setTimeout(async () => {
       try {
         const matches = await tmdbClient.search(query);
+        if (currentRequest !== requestId) return;
         results.innerHTML = matches.length ? matches.slice(0, 6).map((item, index) => `<button type="button" class="search-result" data-result-index="${index}"><img src="${imageUrl(item.poster_path, "w92")}" alt="" /><span><strong>${item.title || item.name}</strong><small>${(item.release_date || item.first_air_date || "").slice(0, 4)} / ${item.media_type === "tv" ? "Series" : "Movie"}</small></span></button>`).join("") : `<p class="search-status">No titles found.</p>`;
         results.querySelectorAll("[data-result-index]").forEach((button) => button.addEventListener("click", async () => {
           const details = await tmdbClient.details(matches[Number(button.dataset.resultIndex)]);
@@ -79,7 +86,8 @@ function bindTitleSearch(form, tmdbClient) {
           form.querySelector("[data-poster]").value = details.poster || "";
           results.innerHTML = `<p class="search-status is-selected">Selected ${details.title}</p>`;
         }));
-      } catch (error) {
+      } catch {
+        if (currentRequest !== requestId) return;
         results.innerHTML = `<p class="search-status">TMDB search is unavailable. You can still enter the title manually.</p>`;
       }
     }, 300);
