@@ -1,5 +1,5 @@
 import { startRouter, registerRoute } from "./router.js";
-import { loadFlatFile, saveMovie, downloadFlatFile } from "./data/storage.js";
+import { loadFlatFile, saveMovie, getSession, logout } from "./data/storage.js";
 import { createLibrary } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
@@ -11,16 +11,23 @@ import { bindMovieForm } from "./components/movie-form.js";
 import { createTmdbClient } from "./api/tmdb.js";
 import { TMDB_READ_TOKEN, MOVIE_API_URL } from "./config.js";
 import { createTheatreClient } from "./api/places.js";
+import { authPage, bindAuth } from "./components/auth.js";
 
 const app = document.querySelector("#app");
 
 async function boot() {
   try {
+    const session = MOVIE_API_URL ? await getSession(MOVIE_API_URL) : { authenticated: true, login: "local" };
+    if (!session.authenticated) {
+      app.innerHTML = authPage();
+      bindAuth(app, MOVIE_API_URL);
+      return;
+    }
     const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
     const tmdbClient = TMDB_READ_TOKEN ? createTmdbClient({ token: TMDB_READ_TOKEN }) : null;
     const theatreClient = createTheatreClient();
     const render = (content, active) => {
-      app.innerHTML = shell(content, active, library);
+      app.innerHTML = shell(content, active, library, session);
       bindNavigation();
       bindShelfControls(library, render, tmdbClient, theatreClient);
     };
@@ -32,17 +39,14 @@ async function boot() {
     registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
     startRouter((route, path) => route(path));
 
-    window.addEventListener("click", (event) => {
-      if (event.target.closest("[data-export]")) downloadFlatFile(library.all());
-    });
   } catch (error) {
     app.innerHTML = `<main class="error-state"><p>Could not open the vault.</p><code>${error.message}</code></main>`;
   }
 }
 
-function shell(content, active, library) {
+function shell(content, active, library, session) {
   const stats = library.stats();
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}</nav><button class="button button-quiet" data-export>Export JSON</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / FLAT FILE STORAGE</span></footer>`;
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
@@ -51,6 +55,10 @@ function navItem(route, label, active) {
 
 function bindNavigation() {
   document.querySelectorAll("[data-route]").forEach((link) => link.addEventListener("click", () => { window.location.hash = link.dataset.route; }));
+  document.querySelector("[data-logout]")?.addEventListener("click", async () => {
+    await logout(MOVIE_API_URL);
+    window.location.reload();
+  });
 }
 
 function bindShelfControls(library, render, tmdbClient, theatreClient) {

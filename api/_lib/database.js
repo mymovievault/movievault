@@ -11,26 +11,64 @@ function getSql() {
 async function ready() {
   if (!schemaPromise) {
     const sql = getSql();
-    schemaPromise = sql`CREATE TABLE IF NOT EXISTS movies (tmdb_id TEXT PRIMARY KEY, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+    schemaPromise = (async () => {
+      await sql`CREATE TABLE IF NOT EXISTS movies (tmdb_id TEXT NOT NULL, owner_login TEXT, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (owner_login, tmdb_id))`;
+      await sql`ALTER TABLE movies ADD COLUMN IF NOT EXISTS owner_login TEXT`;
+      await sql`UPDATE movies SET owner_login = COALESCE(owner_login, ${process.env.GITHUB_SEED_OWNER || "abilash9007"}) WHERE owner_login IS NULL`;
+      await sql`ALTER TABLE movies ALTER COLUMN owner_login SET NOT NULL`;
+      await sql`ALTER TABLE movies DROP CONSTRAINT IF EXISTS movies_pkey`;
+      await sql`ALTER TABLE movies DROP CONSTRAINT IF EXISTS movies_owner_tmdb_pkey`;
+      await sql`ALTER TABLE movies ADD CONSTRAINT movies_owner_tmdb_pkey PRIMARY KEY (owner_login, tmdb_id)`;
+      await sql`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL)`;
+    })();
   }
   await schemaPromise;
   return getSql();
 }
 
-export async function listMovies() {
+export async function listMovies(ownerLogin) {
   const sql = await ready();
-  const rows = await sql`SELECT record FROM movies ORDER BY created_at DESC`;
+  const rows = await sql`SELECT record FROM movies WHERE owner_login = ${ownerLogin} ORDER BY created_at DESC`;
   return rows.map((row) => row.record);
 }
 
-export async function upsertMovie(record) {
+export async function upsertMovie(record, ownerLogin) {
   const sql = await ready();
-  await sql`INSERT INTO movies (tmdb_id, record) VALUES (${String(record.tmdbId)}, ${JSON.stringify(record)}::jsonb) ON CONFLICT (tmdb_id) DO UPDATE SET record = EXCLUDED.record, created_at = NOW()`;
+  await sql`INSERT INTO movies (tmdb_id, owner_login, record) VALUES (${String(record.tmdbId)}, ${ownerLogin}, ${JSON.stringify(record)}::jsonb) ON CONFLICT (owner_login, tmdb_id) DO UPDATE SET record = EXCLUDED.record, created_at = NOW()`;
   return record;
 }
 
-export async function seedMovies(records) {
+export async function seedMovies(records, ownerLogin) {
   await ready();
-  for (const record of records) await upsertMovie(record);
-  return listMovies();
+  for (const record of records) await upsertMovie(record, ownerLogin);
+  return listMovies(ownerLogin);
+}
+
+export async function createUser(id, username, passwordHash) {
+  const sql = await ready();
+  const rows = await sql`INSERT INTO users (id, username, password_hash) VALUES (${id}, ${username}, ${passwordHash}) RETURNING id, username`;
+  return rows[0];
+}
+
+export async function findUser(username) {
+  const sql = await ready();
+  const rows = await sql`SELECT id, username, password_hash FROM users WHERE username = ${username}`;
+  return rows[0] || null;
+}
+
+export async function saveSession(tokenHash, userId, expiresAt) {
+  const sql = await ready();
+  await sql`INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (${tokenHash}, ${userId}, ${expiresAt})`;
+}
+
+export async function findSession(tokenHash) {
+  const sql = await ready();
+  const rows = await sql`SELECT users.id, users.username FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.token_hash = ${tokenHash} AND sessions.expires_at > NOW()`;
+  return rows[0] || null;
+}
+
+export async function deleteSession(tokenHash) {
+  const sql = await ready();
+  await sql`DELETE FROM sessions WHERE token_hash = ${tokenHash}`;
 }

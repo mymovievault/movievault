@@ -19,6 +19,18 @@
 .error-state { width: min(600px, calc(100% - 48px)); margin: 100px auto; }
 .error-state code { display: block; margin-top: 14px; color: #d8a35d; white-space: pre-wrap; }
 .loading-screen { margin: auto; color: #d8a35d; font: 11px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+.account-name { color: #828781; font: 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.auth-page { display: grid; min-height: 78vh; place-items: center; }
+.auth-panel { width: min(440px, 100%); padding: 48px; border: 1px solid #343833; background: rgba(37, 41, 37, .5); }
+.auth-panel h1 { margin: 16px 0; font-size: 52px; line-height: .98; letter-spacing: -.07em; }
+.auth-panel h1 em { color: #d8a35d; font-style: normal; }
+.auth-copy { margin: 0 0 30px; color: #969b94; font-size: 14px; line-height: 1.7; }
+.auth-panel label { display: block; margin-top: 18px; color: #828781; font: 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.auth-panel input { display: block; width: 100%; margin-top: 8px; padding: 12px 0; color: #e9e5dc; background: transparent; border: 0; border-bottom: 1px solid #50564e; outline: 0; font-size: 14px; text-transform: none; }
+.auth-panel input:focus { border-color: #d8a35d; }
+.auth-panel [data-auth-submit] { margin-top: 28px; }
+.auth-message { min-height: 18px; margin: 15px 0 0; color: #d8a35d; font: 10px "DM Mono", monospace; }
+.auth-toggle { margin-top: 22px; padding: 0; border: 0; background: transparent; }
 .form-hint { max-width: 530px; margin: -12px 0 25px; color: #828781; font-size: 13px; line-height: 1.6; }
 .add-movie-panel { margin: 0 0 88px; }
 .add-movie-panel summary { width: max-content; list-style: none; }
@@ -58,3 +70,4 @@
 blockquote { max-width: 480px; margin: 0 0 35px; padding-left: 18px; color: #e9e5dc; border-left: 2px solid #d8a35d; font-size: 14px; line-height: 1.7; }
 @media (max-width: 720px) { .detail { grid-template-columns: 1fr; padding-top: 35px; } .detail > img { width: min(260px, 70vw); } }
 @media (max-width: 600px) { .movie-form { padding: 22px; } .form-grid { grid-template-columns: 1fr; } .form-wide { grid-column: auto; } }
+@media (max-width: 720px) { .account-name { display: none; } .auth-panel { padding: 30px 22px; } .auth-panel h1 { font-size: 45px; } }

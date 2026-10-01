@@ -7,6 +7,15 @@ export async function loadFlatFile(apiUrl = "") {
   return response.json();
 }
 
+export async function getSession(apiUrl) {
+  const response = await fetch(`${apiUrl}/api/auth/me`, { cache: "no-store", credentials: "include" });
+  return response.json();
+}
+
+export async function logout(apiUrl) {
+  await fetch(`${apiUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
+}
+
 export async function saveMovie(record, apiUrl) {
   if (!apiUrl) throw new Error("Configure MOVIE_API_URL before saving movies.");
   const response = await fetch(apiUrl, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });
@@ -15,12 +24,3 @@ export async function saveMovie(record, apiUrl) {
   return result;
 }
 
-export function downloadFlatFile(records) {
-  const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "movies.json";
-  link.click();
-  URL.revokeObjectURL(url);
-}
