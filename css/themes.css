@@ -1,0 +1,2 @@
+:root { --ink: #101211; --paper: #e9e5dc; --muted: #828781; --line: #343833; --accent: #d8a35d; }
+::selection { color: var(--ink); background: var(--accent); }
