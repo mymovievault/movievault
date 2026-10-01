@@ -24,7 +24,7 @@ export function createLibrary(records) {
       const watched = entries.filter((entry) => entry.status === "watched");
       return {
         total: entries.length,
-        watched: watched.length,
+        watched: entries.filter((entry) => entry.status === "watched" || entry.status === "watching").length,
         wishlist: entries.filter((entry) => entry.status === "wishlist").length,
         minutes: watched.reduce((sum, entry) => sum + (entry.runtime || 0), 0),
         averageRating: watched.length ? watched.reduce((sum, entry) => sum + (entry.rating || 0), 0) / watched.length : 0,
