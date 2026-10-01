@@ -42,8 +42,7 @@ async function boot() {
 
 function shell(content, active, library) {
   const stats = library.stats();
-  const login = MOVIE_API_URL ? `<a class="button button-quiet" href="${MOVIE_API_URL}/api/auth/login">Sign in to save</a>` : "";
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}</nav>${login}<button class="button button-quiet" data-export>Export JSON</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / FLAT FILE STORAGE</span></footer>`;
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}</nav><button class="button button-quiet" data-export>Export JSON</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / FLAT FILE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
