@@ -7,7 +7,7 @@ const references = [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
   .filter((reference) => !reference.startsWith("http") && !reference.startsWith("#"));
 
 for (const reference of references) {
-  await access(join(".", reference));
+  await access(join(".", reference.split(/[?#]/)[0]));
 }
 JSON.parse(await readFile("data/movies.json", "utf8"));
 console.log(`Static assets and data OK: ${references.length} local references`);
