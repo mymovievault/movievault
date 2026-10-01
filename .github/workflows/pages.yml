@@ -23,12 +23,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check project
+        run: npm run check
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Configure TMDB search
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
-        run: printf 'export const TMDB_READ_TOKEN = "%s";\n' "$TMDB_READ_TOKEN" > js/config.js
+          MOVIE_API_URL: ${{ secrets.MOVIE_API_URL }}
+        run: |
+          printf 'export const TMDB_READ_TOKEN = "%s";\nexport const MOVIE_API_URL = "%s";\n' "$TMDB_READ_TOKEN" "$MOVIE_API_URL" > js/config.js
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:

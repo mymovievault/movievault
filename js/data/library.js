@@ -13,6 +13,9 @@ export function createLibrary(records) {
       entries = [entry, ...entries];
       return structuredClone(entry);
     },
+    remove(tmdbId) {
+      entries = entries.filter((entry) => entry.tmdbId !== Number(tmdbId));
+    },
     update(tmdbId, changes) {
       entries = entries.map((entry) => entry.tmdbId === Number(tmdbId) ? { ...entry, ...changes } : entry);
       return this.find(tmdbId);

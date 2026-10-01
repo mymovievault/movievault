@@ -1,5 +1,5 @@
 import { startRouter, registerRoute } from "./router.js";
-import { loadFlatFile, downloadFlatFile } from "./data/storage.js";
+import { loadFlatFile, saveMovie, downloadFlatFile } from "./data/storage.js";
 import { createLibrary } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
@@ -9,14 +9,14 @@ import { movieModal } from "./components/movie-modal.js";
 import { bindFilters } from "./components/filters.js";
 import { bindMovieForm } from "./components/movie-form.js";
 import { createTmdbClient } from "./api/tmdb.js";
-import { TMDB_READ_TOKEN } from "./config.js";
+import { TMDB_READ_TOKEN, MOVIE_API_URL } from "./config.js";
 import { createTheatreClient } from "./api/places.js";
 
 const app = document.querySelector("#app");
 
 async function boot() {
   try {
-    const library = createLibrary(await loadFlatFile());
+    const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
     const tmdbClient = TMDB_READ_TOKEN ? createTmdbClient({ token: TMDB_READ_TOKEN }) : null;
     const theatreClient = createTheatreClient();
     const render = (content, active) => {
@@ -42,7 +42,8 @@ async function boot() {
 
 function shell(content, active, library) {
   const stats = library.stats();
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}</nav><button class="button button-quiet" data-export>Export JSON</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / FLAT FILE STORAGE</span></footer>`;
+  const login = MOVIE_API_URL ? `<a class="button button-quiet" href="${MOVIE_API_URL}/api/auth/login">Sign in to save</a>` : "";
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}</nav>${login}<button class="button button-quiet" data-export>Export JSON</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / FLAT FILE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
@@ -57,8 +58,8 @@ function bindShelfControls(library, render, tmdbClient, theatreClient) {
   const root = document.querySelector("main");
   if (!root) return;
   bindFilters(root);
-  bindMovieForm(root, (formData, metadata) => {
-    library.add({
+  bindMovieForm(root, async (formData, metadata) => {
+    const record = library.add({
       ...metadata,
       title: formData.title.trim(),
       year: formData.year ? Number(formData.year) : null,
@@ -74,9 +75,15 @@ function bindShelfControls(library, render, tmdbClient, theatreClient) {
       ottPlatform: formData.ottPlatform.trim(),
       theatreName: formData.theatreName.trim(),
     });
-    const shelf = formData.status === "wishlist" ? "/wishlist" : formData.status === "upcoming" ? "/upcoming" : "/library";
-    const page = shelf === "/wishlist" ? wishlistPage(library, "wishlist", "Wishlist") : shelf === "/upcoming" ? upcomingPage(library, "upcoming", "Upcoming") : libraryPage(library, ["watched", "watching"], "Watched & Watching");
-    render(page, shelf);
+    try {
+      await saveMovie(record, MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : "");
+      const shelf = formData.status === "wishlist" ? "/wishlist" : formData.status === "upcoming" ? "/upcoming" : "/library";
+      const page = shelf === "/wishlist" ? wishlistPage(library, "wishlist", "Wishlist") : shelf === "/upcoming" ? upcomingPage(library, "upcoming", "Upcoming") : libraryPage(library, ["watched", "watching"], "Watched & Watching");
+      render(page, shelf);
+    } catch (error) {
+      library.remove(record.tmdbId);
+      window.alert(error.message);
+    }
   }, tmdbClient, theatreClient);
   const search = root.querySelector("[data-search]");
   if (search) search.addEventListener("input", () => {

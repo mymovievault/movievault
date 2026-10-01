@@ -1,0 +1,16 @@
+{
+  "name": "movie-vault",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node --test",
+    "check:syntax": "node scripts/check-syntax.mjs",
+    "check:static": "node scripts/check-static.mjs",
+    "check": "npm run lint && npm test && npm run check:syntax && npm run check:static"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}
