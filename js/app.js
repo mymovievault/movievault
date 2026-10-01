@@ -61,7 +61,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient) {
     const record = library.add({
       ...metadata,
       title: formData.title.trim(),
-      year: formData.year ? Number(formData.year) : null,
+      year: metadata.year || null,
       poster: formData.poster.trim(),
       genres: metadata.genres || ["Uncategorized"],
       runtime: metadata.runtime || 0,

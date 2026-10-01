@@ -42,6 +42,7 @@
 .search-result small, .search-status { color: #828781; font: 10px "DM Mono", monospace; letter-spacing: .04em; }
 .search-status { margin: 10px 0 0; }
 .search-status.is-selected { color: #d8a35d; }
+.metadata-preview { margin: 5px 0 0; color: #969b94; font: 10px "DM Mono", monospace; letter-spacing: .04em; text-transform: uppercase; }
 .search-box { display: block; max-width: 360px; margin-top: 28px; color: #767c75; font: 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
 .search-box input { display: block; width: 100%; margin-top: 10px; padding: 12px 0; color: #e9e5dc; background: transparent; border: 0; border-bottom: 1px solid #343833; outline: 0; font-size: 14px; letter-spacing: 0; text-transform: none; }
 .search-box input:focus { border-color: #d8a35d; }
