@@ -21,6 +21,7 @@ Import this repository into Vercel and configure these environment variables:
 - `SESSION_SECRET`: a long random value
 - `APP_URL`: your Vercel deployment URL
 - `FRONTEND_URL`: your GitHub Pages URL
+- `FRONTEND_ORIGIN`: your GitHub Pages origin without the path, for example `https://mymovievault.github.io`
 
 Then set `MOVIE_API_URL` to the Vercel URL and redeploy the Pages site.
 

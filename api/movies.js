@@ -2,7 +2,7 @@ import { getMovieFile, saveMovieFile } from "./_lib/github.js";
 import { readSession } from "./_lib/session.js";
 
 function headers(response) {
-  response.setHeader("Access-Control-Allow-Origin", process.env.FRONTEND_URL || "*");
+  response.setHeader("Access-Control-Allow-Origin", process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || "*");
   response.setHeader("Access-Control-Allow-Credentials", "true");
   response.setHeader("Access-Control-Allow-Headers", "Content-Type");
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
