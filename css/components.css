@@ -30,6 +30,7 @@
 .auth-panel input:focus { border-color: #d8a35d; }
 .auth-panel [data-auth-submit] { margin-top: 28px; }
 .auth-message { min-height: 18px; margin: 15px 0 0; color: #d8a35d; font: 10px "DM Mono", monospace; }
+.auth-message.is-success { padding: 12px; color: #b8d39d; border: 1px solid #536746; background: rgba(184, 211, 157, .08); line-height: 1.7; }
 .auth-toggle { margin-top: 22px; padding: 0; border: 0; background: transparent; }
 .admin-list { max-width: 760px; padding-bottom: 80px; }
 .admin-request { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 0; border-top: 1px solid #343833; }

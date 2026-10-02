@@ -27,13 +27,15 @@ export function bindAuth(root, apiUrl) {
         mode = "login";
         submit.innerHTML = "Sign in <span>↗</span>";
         toggle.textContent = "Create a new account";
-        message.textContent = result.message;
+        message.classList.add("is-success");
+        message.innerHTML = `<strong>Request submitted.</strong><br />${result.message}`;
         form.reset();
       } else {
         window.location.reload();
       }
       submit.disabled = false;
     } catch (error) {
+      message.classList.remove("is-success");
       message.textContent = error.message;
       submit.disabled = false;
     }
