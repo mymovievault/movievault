@@ -25,7 +25,7 @@ async function boot() {
       return;
     }
     const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
-    const curatedUpcoming = await loadUpcoming();
+    const curatedUpcoming = await loadUpcoming(MOVIE_API_URL);
     const tmdbClient = TMDB_READ_TOKEN ? createTmdbClient({ token: TMDB_READ_TOKEN }) : null;
     const theatreClient = createTheatreClient();
     const render = (content, active) => {

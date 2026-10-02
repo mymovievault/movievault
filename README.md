@@ -30,7 +30,7 @@ node scripts/seed-database.mjs
 
 The seeded records use `abilash9007` as their owner. Create that username first to see the existing library; other usernames start with their own empty lists.
 
-The Upcoming page reads `data/upcoming.json`. GitHub Actions refreshes that static file daily from TMDB's India upcoming-movie feed and can also be run manually with the **Refresh Upcoming Movies** workflow. The page stays fast and deterministic while the committed list stays current.
+The Upcoming page loads current TMDB data through the Vercel API at runtime. It checks Tamil, Telugu, Malayalam, Kannada, Hindi, and English upcoming movies for India, plus a separate Most talked about trending section. It does not commit release changes to GitHub. `data/upcoming.json` remains only as a local static fallback; configure `TMDB_READ_TOKEN` in Vercel for the live feed.
 
 Then set `MOVIE_API_URL` to the Vercel URL and redeploy the Pages site.
 

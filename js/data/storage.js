@@ -8,8 +8,8 @@ export async function loadFlatFile(apiUrl = "") {
   return response.json();
 }
 
-export async function loadUpcoming() {
-  const response = await fetch(UPCOMING_URL, { cache: "no-store" });
+export async function loadUpcoming(apiUrl = "") {
+  const response = await fetch(apiUrl ? `${apiUrl}/api/upcoming` : UPCOMING_URL, { cache: "no-store", credentials: apiUrl ? "include" : "same-origin" });
   if (!response.ok) throw new Error(`Could not load ${UPCOMING_URL} (${response.status})`);
   return response.json();
 }
