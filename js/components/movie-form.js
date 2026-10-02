@@ -8,6 +8,10 @@ export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchli
   const form = root.querySelector("[data-add-movie]");
   if (!form) return;
   form.querySelector("[data-watch-region]")?.closest("label")?.remove();
+  const status = form.querySelector('[name="status"]');
+  status?.querySelector('option[value="watching"]')?.remove();
+  const wishlistOption = status?.querySelector('option[value="wishlist"]');
+  if (wishlistOption) wishlistOption.textContent = "Want to watch / Watchlist";
   const listOptions = watchlists.filter((list) => list.is_owner).map((list) => `<option value="${list.id}">${list.name}</option>`).join("");
   form.querySelector('[name="status"]')?.insertAdjacentHTML("beforebegin", `<label>Save to list<select name="listId" required>${listOptions}</select></label>`);
   const mode = form.querySelector("[data-watching-mode]");
