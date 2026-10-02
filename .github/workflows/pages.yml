@@ -37,7 +37,7 @@ jobs:
       - name: Configure TMDB search
         env:
           TMDB_READ_TOKEN: ${{ secrets.TMDB_READ_TOKEN }}
-          MOVIE_API_URL: ${{ secrets.MOVIE_API_URL }}
+          MOVIE_API_URL: ${{ vars.MOVIE_API_URL }}
         run: |
           printf 'export const TMDB_READ_TOKEN = "%s";\nexport const MOVIE_API_URL = "%s";\n' "$TMDB_READ_TOKEN" "$MOVIE_API_URL" > js/config.js
       - name: Upload site
