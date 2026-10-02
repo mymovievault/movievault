@@ -38,6 +38,12 @@
 .admin-request small { margin-top: 6px; color: #828781; font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .admin-actions { display: flex; gap: 8px; }
 .admin-actions .button { padding: 9px 12px; }
+.upcoming-add { padding: 7px 9px; color: #d8a35d; border-color: #50564e; white-space: nowrap; }
+.upcoming-add:hover { color: #101211; background: #d8a35d; border-color: #d8a35d; }
+.release-reminders { margin: 0 0 55px; padding: 18px 20px; border-left: 2px solid #d8a35d; background: rgba(216, 163, 93, .08); }
+.release-reminders a { display: flex; justify-content: space-between; gap: 20px; padding-top: 11px; }
+.release-reminders strong { font-size: 13px; font-weight: 600; }
+.release-reminders span { color: #d8a35d; font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .form-hint { max-width: 530px; margin: -12px 0 25px; color: #828781; font-size: 13px; line-height: 1.6; }
 .add-movie-panel { margin: 0 0 88px; }
 .add-movie-panel summary { width: max-content; list-style: none; }

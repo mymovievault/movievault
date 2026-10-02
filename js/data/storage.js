@@ -1,9 +1,16 @@
 const DATA_URL = "data/movies.json";
+const UPCOMING_URL = "data/upcoming.json";
 export async function loadFlatFile(apiUrl = "") {
   const response = await fetch(apiUrl || DATA_URL, { cache: "no-store", credentials: apiUrl ? "include" : "same-origin" });
   if (!response.ok) {
     throw new Error(`Could not load ${DATA_URL} (${response.status})`);
   }
+  return response.json();
+}
+
+export async function loadUpcoming() {
+  const response = await fetch(UPCOMING_URL, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Could not load ${UPCOMING_URL} (${response.status})`);
   return response.json();
 }
 

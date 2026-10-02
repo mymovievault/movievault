@@ -1,5 +1,5 @@
 import { startRouter, registerRoute } from "./router.js";
-import { loadFlatFile, saveMovie, getSession, logout } from "./data/storage.js";
+import { loadFlatFile, loadUpcoming, saveMovie, getSession, logout } from "./data/storage.js";
 import { createLibrary } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
@@ -25,19 +25,21 @@ async function boot() {
       return;
     }
     const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
+    const curatedUpcoming = await loadUpcoming();
     const tmdbClient = TMDB_READ_TOKEN ? createTmdbClient({ token: TMDB_READ_TOKEN }) : null;
     const theatreClient = createTheatreClient();
     const render = (content, active) => {
       app.innerHTML = shell(content, active, library, session);
       bindNavigation();
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
+      else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render);
       else bindShelfControls(library, render, tmdbClient, theatreClient);
     };
 
     registerRoute("/", () => render(homePage(library), "/"));
     registerRoute("/library", () => render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library"));
     registerRoute("/wishlist", () => render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist"));
-    registerRoute("/upcoming", () => render(upcomingPage(library, "upcoming", "Upcoming"), "/upcoming"));
+    registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming), "/upcoming"));
     registerRoute("/admin", () => render(adminPage(), "/admin"));
     registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
     startRouter((route, path) => route(path));
@@ -102,6 +104,23 @@ function bindShelfControls(library, render, tmdbClient, theatreClient) {
     const query = search.value.toLowerCase();
     root.querySelectorAll(".movie-card").forEach((card) => { card.hidden = !card.textContent.toLowerCase().includes(query); });
   });
+}
+
+function bindUpcoming(root, entries, library, render) {
+  root.querySelectorAll("[data-add-upcoming]").forEach((button) => button.addEventListener("click", async () => {
+    const source = entries.find((entry) => String(entry.tmdbId) === button.dataset.addUpcoming);
+    if (!source) return;
+    const record = library.add({ ...source, status: "wishlist", tags: [...(source.tags || []), "curated upcoming"], notes: source.curatedNote || "" });
+    button.disabled = true;
+    try {
+      await saveMovie(record, MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : "");
+      render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist");
+    } catch (error) {
+      library.remove(record.tmdbId);
+      button.disabled = false;
+      window.alert(error.message);
+    }
+  }));
 }
 
 boot();
