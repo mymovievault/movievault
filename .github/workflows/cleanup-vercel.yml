@@ -1,0 +1,34 @@
+name: Clean Failed Vercel Deployments
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove failed deployments
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: prj_qveyFtFA4B8LUusFDs09p2VMEaEy
+          VERCEL_TEAM_ID: team_JO2bdv8oIpSOwnUx6FjXFzFa
+        run: |
+          set -euo pipefail
+          deployments=$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$VERCEL_PROJECT_ID&teamId=$VERCEL_TEAM_ID&limit=100")
+          failed_ids=$(printf '%s' "$deployments" | jq -r '.deployments[] | select(.state == "ERROR") | .uid')
+          deleted=0
+          while IFS= read -r deployment_id; do
+            [ -z "$deployment_id" ] && continue
+            curl --fail-with-body --silent --show-error --request DELETE \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              "https://api.vercel.com/v13/deployments/$deployment_id?teamId=$VERCEL_TEAM_ID" >/dev/null
+            deleted=$((deleted + 1))
+          done <<< "$failed_ids"
+          echo "Removed $deleted failed Vercel deployment(s)."

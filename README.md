@@ -58,3 +58,5 @@ This runs ESLint, the Node test suite for the library data layer, JavaScript syn
 ## Deploy
 
 Push the repository to GitHub, enable GitHub Actions as the Pages source, and set the repository Pages source to **GitHub Actions**. `.github/workflows/pages.yml` deploys the root folder on pushes to `main`.
+
+`.github/workflows/cleanup-vercel.yml` also runs on every `main` push and manually, removing only Vercel deployments in the `ERROR` state. It preserves all Ready deployments and the production alias. Add a repository secret named `VERCEL_TOKEN` scoped to the `moviebuff` team for this workflow.
