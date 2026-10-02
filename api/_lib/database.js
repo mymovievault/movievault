@@ -142,7 +142,7 @@ export async function deleteWatchlistItem(username, listId, tmdbId) {
 export async function createWatchlist(username, name) {
   const sql = await ready();
   const id = crypto.randomUUID();
-  const rows = await sql`INSERT INTO watchlists (id, owner_username, name) VALUES (${id}, ${username}, ${name}) RETURNING id, name, owner_username`;
+  const rows = await sql`INSERT INTO watchlists (id, owner_username, name) VALUES (${id}, ${username}, ${name}) ON CONFLICT (owner_username, name) DO UPDATE SET name = EXCLUDED.name RETURNING id, name, owner_username`;
   return rows[0];
 }
 
