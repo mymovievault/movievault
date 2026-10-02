@@ -23,7 +23,16 @@ export function bindAuth(root, apiUrl) {
       const response = await fetch(`${apiUrl}/api/auth/${mode}`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(new FormData(form))) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Could not authenticate.");
-      window.location.reload();
+      if (result.pending) {
+        mode = "login";
+        submit.innerHTML = "Sign in <span>↗</span>";
+        toggle.textContent = "Create a new account";
+        message.textContent = result.message;
+        form.reset();
+      } else {
+        window.location.reload();
+      }
+      submit.disabled = false;
     } catch (error) {
       message.textContent = error.message;
       submit.disabled = false;

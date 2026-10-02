@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { createUser, findUser } from "../_lib/database.js";
 import { hashPassword } from "../_lib/passwords.js";
-import { createSession } from "../_lib/session.js";
 import { setCors } from "../_lib/cors.js";
 
 export default async function signup(request, response) {
@@ -14,8 +13,7 @@ export default async function signup(request, response) {
     if (password.length < 8) return response.status(400).json({ error: "Password must be at least 8 characters." });
     if (await findUser(username)) return response.status(409).json({ error: "That username is already taken." });
     const user = await createUser(crypto.randomUUID(), username, await hashPassword(password));
-    response.setHeader("Set-Cookie", await createSession(user.id));
-    return response.status(201).json({ authenticated: true, login: user.username });
+    return response.status(202).json({ pending: true, login: user.username, message: "Your account request was sent for admin approval." });
   } catch (error) {
     return response.status(500).json({ error: error.message });
   }

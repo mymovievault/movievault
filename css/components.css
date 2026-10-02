@@ -31,6 +31,13 @@
 .auth-panel [data-auth-submit] { margin-top: 28px; }
 .auth-message { min-height: 18px; margin: 15px 0 0; color: #d8a35d; font: 10px "DM Mono", monospace; }
 .auth-toggle { margin-top: 22px; padding: 0; border: 0; background: transparent; }
+.admin-list { max-width: 760px; padding-bottom: 80px; }
+.admin-request { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 18px 0; border-top: 1px solid #343833; }
+.admin-request strong, .admin-request small { display: block; }
+.admin-request strong { font-size: 15px; }
+.admin-request small { margin-top: 6px; color: #828781; font: 10px "DM Mono", monospace; text-transform: uppercase; }
+.admin-actions { display: flex; gap: 8px; }
+.admin-actions .button { padding: 9px 12px; }
 .form-hint { max-width: 530px; margin: -12px 0 25px; color: #828781; font-size: 13px; line-height: 1.6; }
 .add-movie-panel { margin: 0 0 88px; }
 .add-movie-panel summary { width: max-content; list-style: none; }

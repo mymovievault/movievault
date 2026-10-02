@@ -19,7 +19,10 @@ async function ready() {
       await sql`ALTER TABLE movies DROP CONSTRAINT IF EXISTS movies_pkey`;
       await sql`ALTER TABLE movies DROP CONSTRAINT IF EXISTS movies_owner_tmdb_pkey`;
       await sql`ALTER TABLE movies ADD CONSTRAINT movies_owner_tmdb_pkey PRIMARY KEY (owner_login, tmdb_id)`;
-      await sql`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', role TEXT NOT NULL DEFAULT 'member', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`;
+      await sql`UPDATE users SET status = 'approved', role = 'admin' WHERE username = ${process.env.ADMIN_USERNAME || "abilash9007"}`;
       await sql`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL)`;
     })();
   }
@@ -47,13 +50,13 @@ export async function seedMovies(records, ownerLogin) {
 
 export async function createUser(id, username, passwordHash) {
   const sql = await ready();
-  const rows = await sql`INSERT INTO users (id, username, password_hash) VALUES (${id}, ${username}, ${passwordHash}) RETURNING id, username`;
+  const rows = await sql`INSERT INTO users (id, username, password_hash, status, role) VALUES (${id}, ${username}, ${passwordHash}, 'pending', 'member') RETURNING id, username, status, role`;
   return rows[0];
 }
 
 export async function findUser(username) {
   const sql = await ready();
-  const rows = await sql`SELECT id, username, password_hash FROM users WHERE username = ${username}`;
+  const rows = await sql`SELECT id, username, password_hash, status, role FROM users WHERE username = ${username}`;
   return rows[0] || null;
 }
 
@@ -64,11 +67,22 @@ export async function saveSession(tokenHash, userId, expiresAt) {
 
 export async function findSession(tokenHash) {
   const sql = await ready();
-  const rows = await sql`SELECT users.id, users.username FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.token_hash = ${tokenHash} AND sessions.expires_at > NOW()`;
+  const rows = await sql`SELECT users.id, users.username, users.role FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.token_hash = ${tokenHash} AND sessions.expires_at > NOW()`;
   return rows[0] || null;
 }
 
 export async function deleteSession(tokenHash) {
   const sql = await ready();
   await sql`DELETE FROM sessions WHERE token_hash = ${tokenHash}`;
+}
+
+export async function listPendingUsers() {
+  const sql = await ready();
+  return sql`SELECT id, username, created_at FROM users WHERE status = 'pending' ORDER BY created_at ASC`;
+}
+
+export async function updateUserStatus(userId, status) {
+  const sql = await ready();
+  const rows = await sql`UPDATE users SET status = ${status} WHERE id = ${userId} RETURNING id, username, status`;
+  return rows[0] || null;
 }

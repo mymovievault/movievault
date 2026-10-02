@@ -6,5 +6,5 @@ export default async function me(request, response) {
   if (request.method === "OPTIONS") return response.status(204).end();
   const session = readSession(request);
   const user = await session;
-  response.status(200).json(user ? { authenticated: true, login: user.username } : { authenticated: false });
+  response.status(200).json(user ? { authenticated: true, login: user.username, role: user.role } : { authenticated: false });
 }

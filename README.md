@@ -10,6 +10,8 @@ The add form can search TMDB for movies and series. To enable it on GitHub Pages
 
 GitHub Pages is the frontend only. The Vercel API stores users, sessions, and movies in Postgres. Each movie belongs to the signed-in username, so accounts see only their own lists. Saves are immediate and do not require GitHub access. Until `MOVIE_API_URL` is configured, the local static build remains a read-only preview.
 
+New account registrations start as pending requests. The `abilash9007` account is promoted to admin by the database migration and can approve or reject requests from the **Admin** page. Approved users can then sign in and manage their own library. Sharing can later be added on top of the existing owner-scoped records.
+
 ## Vercel backend
 
 Connect this repository to Vercel, add a Neon/Postgres storage integration, and configure these environment variables:

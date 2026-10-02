@@ -11,6 +11,7 @@ export default async function login(request, response) {
     const password = String(request.body?.password || "");
     const user = await findUser(username);
     if (!user || !(await verifyPassword(password, user.password_hash))) return response.status(401).json({ error: "Invalid username or password." });
+    if (user.status !== "approved") return response.status(403).json({ error: "Your account is waiting for admin approval." });
     response.setHeader("Set-Cookie", await createSession(user.id));
     return response.status(200).json({ authenticated: true, login: user.username });
   } catch (error) {

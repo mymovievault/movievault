@@ -12,6 +12,7 @@ import { createTmdbClient } from "./api/tmdb.js";
 import { TMDB_READ_TOKEN, MOVIE_API_URL } from "./config.js";
 import { createTheatreClient } from "./api/places.js";
 import { authPage, bindAuth } from "./components/auth.js";
+import { adminPage, bindAdmin } from "./components/admin.js";
 
 const app = document.querySelector("#app");
 
@@ -29,13 +30,15 @@ async function boot() {
     const render = (content, active) => {
       app.innerHTML = shell(content, active, library, session);
       bindNavigation();
-      bindShelfControls(library, render, tmdbClient, theatreClient);
+      if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
+      else bindShelfControls(library, render, tmdbClient, theatreClient);
     };
 
     registerRoute("/", () => render(homePage(library), "/"));
     registerRoute("/library", () => render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library"));
     registerRoute("/wishlist", () => render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist"));
     registerRoute("/upcoming", () => render(upcomingPage(library, "upcoming", "Upcoming"), "/upcoming"));
+    registerRoute("/admin", () => render(adminPage(), "/admin"));
     registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
     startRouter((route, path) => route(path));
 
@@ -46,7 +49,8 @@ async function boot() {
 
 function shell(content, active, library, session) {
   const stats = library.stats();
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
