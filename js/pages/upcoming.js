@@ -1,6 +1,6 @@
 import { upcomingCard } from "../components/upcoming-card.js";
 
-export function upcomingPage(entries) {
+export function upcomingPage(entries, watchlists = []) {
 	 const order = ["Most talked about", "Tamil", "Telugu", "Malayalam", "Kannada", "Hindi", "English"];
 	 const groups = new Map(order.map((label) => [label, []]));
 	 entries.forEach((entry) => {
@@ -8,7 +8,7 @@ export function upcomingPage(entries) {
 		 if (groups.has(label)) groups.get(label).push(entry);
 	 });
 	 const available = order.filter((label) => groups.get(label).length);
-	 const sections = available.map((label) => `<section class="upcoming-section" data-upcoming-section="${label}"><div class="section-heading"><div><p class="eyebrow">${label === "Most talked about" ? "TRENDING NOW" : "LANGUAGE"}</p><h2>${label}</h2></div><span class="section-count">${groups.get(label).length} titles</span></div><div class="movie-grid movie-grid-large">${groups.get(label).map(upcomingCard).join("")}</div></section>`).join("");
+	 const sections = available.map((label) => `<section class="upcoming-section" data-upcoming-section="${label}"><div class="section-heading"><div><p class="eyebrow">${label === "Most talked about" ? "TRENDING NOW" : "LANGUAGE"}</p><h2>${label}</h2></div><span class="section-count">${groups.get(label).length} titles</span></div><div class="movie-grid movie-grid-large">${groups.get(label).map((entry) => upcomingCard(entry, watchlists)).join("")}</div></section>`).join("");
 	 const options = ["All", ...available].map((label, index) => `<button type="button" class="upcoming-filter-button${index === 0 ? " is-active" : ""}" data-upcoming-filter="${label}">${label}</button>`).join("");
 	 const selectOptions = ["All", ...available].map((label) => `<option value="${label}">${label}</option>`).join("");
 	 return `<main><section class="page-heading"><p class="eyebrow">LIVE TMDB SELECTION</p><h1>Upcoming</h1><p>${entries.length} titles across trending and language sections.</p><div class="upcoming-filters" role="tablist" aria-label="Upcoming categories">${options}</div><label class="upcoming-filter-select">Show<select data-upcoming-select>${selectOptions}</select></label></section>${sections || `<div class="empty-state">The curated list is empty.</div>`}</main>`;

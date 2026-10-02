@@ -42,14 +42,14 @@ async function boot() {
       bindNavigation();
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
       else if (active === "/lists") bindLists(app, MOVIE_API_URL, (lists) => { watchlists = lists; });
-      else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render);
+      else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render, watchlists);
       else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists);
     };
 
     registerRoute("/", () => render(homePage(library, watchlists), "/"));
     registerRoute("/library", () => render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library"));
     registerRoute("/wishlist", () => render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist"));
-    registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming), "/upcoming"));
+    registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming, watchlists), "/upcoming"));
     registerRoute("/admin", () => render(adminPage(), "/admin"));
     registerRoute("/lists", () => render(listsPage(library), "/lists"));
     registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
@@ -141,7 +141,7 @@ function bindLibraryActions(root, library, render, active) {
   }));
 }
 
-function bindUpcoming(root, entries, library, render) {
+function bindUpcoming(root, entries, library, render, watchlists) {
   const applyUpcomingFilter = (selected, source) => {
     root.querySelectorAll("[data-upcoming-filter]").forEach((item) => item.classList.toggle("is-active", item.dataset.upcomingFilter === selected));
     const select = root.querySelector("[data-upcoming-select]");
@@ -153,11 +153,14 @@ function bindUpcoming(root, entries, library, render) {
   root.querySelectorAll("[data-add-upcoming]").forEach((button) => button.addEventListener("click", async () => {
     const source = entries.find((entry) => String(entry.tmdbId) === button.dataset.addUpcoming);
     if (!source) return;
-    const record = library.add({ ...source, status: "wishlist", tags: [...(source.tags || []), "curated upcoming"], notes: source.curatedNote || "" });
+    const listId = button.closest(".movie-card")?.querySelector("[data-upcoming-list]")?.value;
+    if (!listId) return window.alert("Create a watchlist before adding this title.");
+    const record = { ...source, status: "wishlist", tags: [...(source.tags || []), "curated upcoming"], notes: source.curatedNote || "" };
     button.disabled = true;
     try {
-      await saveMovie(record, MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : "");
-      render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist");
+      const response = await fetch(`${MOVIE_API_URL}/api/lists`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add-item", listId, record }) });
+      if (!response.ok) throw new Error((await response.json()).error || "Could not add to watchlist.");
+      render(listsPage(library), "/lists");
     } catch (error) {
       library.remove(record.tmdbId);
       button.disabled = false;

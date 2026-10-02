@@ -58,6 +58,8 @@
 .list-movie-grid .movie-meta h3 { font-size: 12px; }
 @media (max-width: 720px) { .lists-grid { grid-template-columns: 1fr; } .list-create, .share-form { flex-wrap: wrap; } }
 .upcoming-add { padding: 7px 9px; color: #d8a35d; border-color: #50564e; white-space: nowrap; }
+.upcoming-actions { display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+.upcoming-actions select { max-width: 135px; padding: 7px 8px; color: #e9e5dc; background: #252925; border: 1px solid #50564e; font-size: 10px; }
 .upcoming-filters { display: flex; gap: 7px; max-width: 100%; margin-top: 25px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .upcoming-filter-select { display: none; align-items: center; gap: 12px; margin-top: 22px; color: #828781; font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .upcoming-filter-select select { flex: 1; min-width: 0; padding: 11px; color: #e9e5dc; background: #252925; border: 1px solid #50564e; font-size: 12px; }
