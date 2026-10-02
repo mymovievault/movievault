@@ -1,6 +1,6 @@
 :root { font-family: "Manrope", sans-serif; color: #e9e5dc; background: #101211; font-synthesis: none; }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; background: #101211; }
+body { margin: 0; min-width: 320px; overflow-x: hidden; background: #101211; }
 a { color: inherit; text-decoration: none; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
