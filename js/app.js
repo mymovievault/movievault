@@ -142,6 +142,10 @@ function bindLibraryActions(root, library, render, active) {
 }
 
 function bindUpcoming(root, entries, library, render) {
+  root.querySelector("[data-upcoming-filter]")?.addEventListener("change", (event) => {
+    const selected = event.target.value;
+    root.querySelectorAll("[data-upcoming-section]").forEach((section) => { section.hidden = selected !== "All" && section.dataset.upcomingSection !== selected; });
+  });
   root.querySelectorAll("[data-add-upcoming]").forEach((button) => button.addEventListener("click", async () => {
     const source = entries.find((entry) => String(entry.tmdbId) === button.dataset.addUpcoming);
     if (!source) return;
