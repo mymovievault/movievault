@@ -16,6 +16,7 @@ export async function bindLists(root, apiUrl, onListsChanged = () => {}) {
     const lists = await request(`${apiUrl}/api/lists`);
     onListsChanged(lists);
     const tabs = lists.map((list, index) => `<button type="button" class="list-tab${index === 0 ? " is-active" : ""}" data-list-tab="${list.id}">${list.name}<small>${list.is_owner ? "Your list" : "Shared"}</small></button>`).join("");
+    const selectOptions = lists.map((list) => `<option value="${list.id}">${list.name}${list.is_owner ? "" : " (shared)"}</option>`).join("");
     const panels = lists.map((list, index) => {
       const cards = (list.items || []).map((movie) => {
         const card = movieCard(movie);
@@ -24,11 +25,17 @@ export async function bindLists(root, apiUrl, onListsChanged = () => {}) {
       const sharedWith = list.is_owner && list.shared_with?.length ? `<div class="list-shares"><p class="list-owner">Shared with</p>${list.shared_with.map((username) => `<span>${username}<button type="button" class="text-link" data-revoke-share="${list.id}" data-share-user="${username}">Revoke</button></span>`).join("")}</div>` : "";
       return `<article class="list-panel ${list.is_owner ? "is-owned" : "is-shared"}" data-list-panel="${list.id}"${index === 0 ? "" : " hidden"}><p class="eyebrow">${list.is_owner ? "YOUR LIST" : "SHARED WITH YOU"}</p><h2>${list.name}</h2><p class="list-owner">Owner: ${list.owner_username} / ${(list.items || []).length} title${(list.items || []).length === 1 ? "" : "s"}</p>${list.is_owner ? `<form data-share-list="${list.id}" class="share-form"><input name="username" required placeholder="Username to share with" /><button class="button button-quiet">Share read-only</button></form>${list.name !== "My Library" ? `<button class="button button-quiet list-delete" data-delete-list="${list.id}">Delete list</button>` : ""}${sharedWith}` : ""}<div class="movie-grid list-movie-grid">${cards || `<div class="empty-state">No movies in this list yet.</div>`}</div></article>`;
     }).join("");
-    container.innerHTML = lists.length ? `<div class="list-tabs" role="tablist">${tabs}</div><div class="list-panels">${panels}</div>` : `<div class="empty-state">No watchlists yet.</div>`;
+    container.innerHTML = lists.length ? `<div class="list-tabs" role="tablist">${tabs}</div><label class="list-select">Show<select data-list-select>${selectOptions}</select></label><div class="list-panels">${panels}</div>` : `<div class="empty-state">No watchlists yet.</div>`;
+    const selectList = (selected, source) => {
+      container.querySelectorAll("[data-list-tab]").forEach((item) => item.classList.toggle("is-active", item.dataset.listTab === selected));
+      const select = container.querySelector("[data-list-select]");
+      if (select && source !== select) select.value = selected;
+      container.querySelectorAll("[data-list-panel]").forEach((panel) => { panel.hidden = panel.dataset.listPanel !== selected; });
+    };
     container.querySelectorAll("[data-list-tab]").forEach((tab) => tab.addEventListener("click", () => {
-      container.querySelectorAll("[data-list-tab]").forEach((item) => item.classList.toggle("is-active", item === tab));
-      container.querySelectorAll("[data-list-panel]").forEach((panel) => { panel.hidden = panel.dataset.listPanel !== tab.dataset.listTab; });
+      selectList(tab.dataset.listTab, tab);
     }));
+    container.querySelector("[data-list-select]")?.addEventListener("change", (event) => selectList(event.target.value, event.target));
     container.querySelectorAll("[data-share-list]").forEach((form) => form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const data = Object.fromEntries(new FormData(form));
