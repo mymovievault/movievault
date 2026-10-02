@@ -1,7 +1,8 @@
 import { movieCard } from "../components/movie-card.js";
 
-export function listsPage() {
-  return `<main><section class="page-heading"><p class="eyebrow">YOUR COLLECTIONS</p><h1>Watchlists</h1><p>Create private lists and share selected lists as read-only collections.</p><form class="list-create" data-create-list><input name="name" required maxlength="60" placeholder="New watchlist name" /><button class="button button-primary">Create list <span>+</span></button></form></section><section class="lists-grid" data-lists></section></main>`;
+export function listsPage(library) {
+  const watchlist = library.all().filter((entry) => entry.status === "wishlist");
+  return `<main><section class="page-heading"><p class="eyebrow">YOUR COLLECTIONS</p><h1>Watchlists</h1><p>Create private lists and share selected lists as read-only collections.</p><form class="list-create" data-create-list><input name="name" required maxlength="60" placeholder="New watchlist name" /><button class="button button-primary">Create list <span>+</span></button></form></section><section class="watchlist-section"><div class="section-heading"><div><p class="eyebrow">MY LIBRARY</p><h2>Watchlist</h2></div><span class="section-count">${watchlist.length} titles</span></div><div class="movie-grid movie-grid-large">${watchlist.length ? watchlist.map(movieCard).join("") : `<div class="empty-state">Your watchlist is empty.</div>`}</div></section><section class="lists-grid" data-lists></section></main>`;
 }
 
 export async function bindLists(root, apiUrl, onListsChanged = () => {}) {

@@ -51,7 +51,7 @@ async function boot() {
     registerRoute("/wishlist", () => render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist"));
     registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming), "/upcoming"));
     registerRoute("/admin", () => render(adminPage(), "/admin"));
-    registerRoute("/lists", () => render(listsPage(), "/lists"));
+    registerRoute("/lists", () => render(listsPage(library), "/lists"));
     registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
     startRouter((route, path) => route(path));
 
@@ -63,7 +63,7 @@ async function boot() {
 function shell(content, active, library, session) {
   const stats = library.stats();
   const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/lists", "Lists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
