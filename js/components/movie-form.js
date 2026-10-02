@@ -7,6 +7,7 @@ export function movieForm() {
 export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchlists = []) {
   const form = root.querySelector("[data-add-movie]");
   if (!form) return;
+  form.querySelector("[data-watch-region]")?.closest("label")?.remove();
   const listOptions = watchlists.filter((list) => list.is_owner).map((list) => `<option value="${list.id}">${list.name}</option>`).join("");
   form.querySelector('[name="status"]')?.insertAdjacentHTML("beforebegin", `<label>Save to list<select name="listId" required>${listOptions}</select></label>`);
   const mode = form.querySelector("[data-watching-mode]");
@@ -98,21 +99,16 @@ function bindTitleSearch(form, tmdbClient) {
 }
 
 function bindProviderSearch(form, tmdbClient) {
-  const region = form.querySelector("[data-watch-region]");
-  if (!region || !tmdbClient) return;
-  region.addEventListener("change", () => {
-    const metadata = form.dataset.metadata ? JSON.parse(form.dataset.metadata) : null;
-    if (metadata) loadProviders(form, tmdbClient, metadata);
-  });
+  if (!tmdbClient) return;
 }
 
 async function loadProviders(form, tmdbClient, metadata) {
   const results = form.querySelector("[data-ott-results]");
-  const region = form.querySelector("[data-watch-region]").value;
+  const region = "IN";
   results.innerHTML = `<p class="search-status">Checking OTT availability...</p>`;
   try {
     const providers = await tmdbClient.providers(metadata, region);
-    results.innerHTML = providers.length ? providers.map((provider, index) => `<button type="button" class="search-result provider-result" data-provider-index="${index}"><span><strong>${provider.provider_name}</strong><small>${provider.availability}</small></span></button>`).join("") : `<p class="search-status">No provider data for this region.</p>`;
+    results.innerHTML = providers.length ? providers.map((provider, index) => `<button type="button" class="search-result provider-result" data-provider-index="${index}"><span><strong>${provider.provider_name}</strong><small>${provider.availability} / India</small></span></button>`).join("") : `<p class="search-status">No India provider data found.</p>`;
     results.querySelectorAll("[data-provider-index]").forEach((button) => button.addEventListener("click", () => {
       const provider = providers[Number(button.dataset.providerIndex)];
       form.querySelector("[data-ott-platform]").value = provider.provider_name;
