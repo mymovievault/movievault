@@ -25,6 +25,8 @@ async function ready() {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`;
       await sql`UPDATE users SET status = 'approved', role = 'admin' WHERE username = ${process.env.ADMIN_USERNAME || "abilash9007"}`;
       await sql`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL)`;
+      await sql`CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ)`;
+      await sql`CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, actor_username TEXT, action TEXT NOT NULL, target_type TEXT NOT NULL, target_id TEXT, metadata JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
       await sql`CREATE TABLE IF NOT EXISTS watchlists (id TEXT PRIMARY KEY, owner_username TEXT NOT NULL, name TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (owner_username, name))`;
       await sql`CREATE TABLE IF NOT EXISTS watchlist_shares (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, viewer_username TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, viewer_username))`;
       await sql`CREATE TABLE IF NOT EXISTS watchlist_items (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, tmdb_id TEXT NOT NULL, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, tmdb_id))`;
@@ -82,6 +84,40 @@ export async function findUser(username) {
   const sql = await ready();
   const rows = await sql`SELECT id, username, password_hash, status, role FROM users WHERE username = ${username}`;
   return rows[0] || null;
+}
+
+export async function getUserById(userId) {
+  const sql = await ready();
+  const rows = await sql`SELECT id, username, status, role FROM users WHERE id = ${userId}`;
+  return rows[0] || null;
+}
+
+export async function updateUserPassword(userId, passwordHash) {
+  const sql = await ready();
+  const rows = await sql`UPDATE users SET password_hash = ${passwordHash} WHERE id = ${userId} RETURNING id, username`;
+  return rows[0] || null;
+}
+
+export async function deleteUserSessions(userId) {
+  const sql = await ready();
+  await sql`DELETE FROM sessions WHERE user_id = ${userId}`;
+}
+
+export async function savePasswordResetToken(tokenHash, userId, expiresAt) {
+  const sql = await ready();
+  await sql`DELETE FROM password_reset_tokens WHERE user_id = ${userId} OR expires_at <= NOW()`;
+  await sql`INSERT INTO password_reset_tokens (token_hash, user_id, expires_at) VALUES (${tokenHash}, ${userId}, ${expiresAt})`;
+}
+
+export async function consumePasswordResetToken(tokenHash) {
+  const sql = await ready();
+  const rows = await sql`UPDATE password_reset_tokens SET used_at = NOW() WHERE token_hash = ${tokenHash} AND used_at IS NULL AND expires_at > NOW() RETURNING user_id`;
+  return rows[0]?.user_id || null;
+}
+
+export async function recordAudit(actorUsername, action, targetType, targetId = null, metadata = {}) {
+  const sql = await ready();
+  await sql`INSERT INTO audit_events (id, actor_username, action, target_type, target_id, metadata) VALUES (${crypto.randomUUID()}, ${actorUsername}, ${action}, ${targetType}, ${targetId}, ${JSON.stringify(metadata)}::jsonb)`;
 }
 
 export async function saveSession(tokenHash, userId, expiresAt) {

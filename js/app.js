@@ -14,6 +14,7 @@ import { createTheatreClient } from "./api/places.js";
 import { authPage, bindAuth } from "./components/auth.js";
 import { adminPage, bindAdmin } from "./components/admin.js";
 import { listsPage, bindLists } from "./pages/lists.js";
+import { escapeHtml } from "./utils/escape.js";
 
 const app = document.querySelector("#app");
 
@@ -21,7 +22,7 @@ async function boot() {
   try {
     const session = MOVIE_API_URL ? await getSession(MOVIE_API_URL) : { authenticated: true, login: "local" };
     if (!session.authenticated) {
-      app.innerHTML = authPage();
+      app.innerHTML = authPage(session.sessionExpired ? "Your session expired. Sign in again to continue." : "");
       bindAuth(app, MOVIE_API_URL);
       return;
     }
@@ -63,7 +64,7 @@ async function boot() {
 function shell(content, active, library, session) {
   const stats = library.stats();
   const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${escapeHtml(session.login)}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
@@ -83,6 +84,15 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
   if (!root) return;
   bindFilters(root);
   bindLibraryFilters(root);
+  const more = root.querySelector("[data-library-more]");
+  more?.addEventListener("click", () => {
+    const hidden = [...root.querySelectorAll("[data-paged-card][hidden]")].slice(0, 24);
+    hidden.forEach((card) => { card.hidden = false; });
+    more.textContent = hidden.length ? "Load more titles" : "All titles loaded";
+    more.hidden = !hidden.length;
+    const count = root.querySelector("[data-library-count]");
+    if (count) count.textContent = `Showing ${root.querySelectorAll(".movie-card:not([hidden])").length} of ${root.querySelectorAll(".movie-card").length} titles`;
+  });
   bindMovieForm(root, async (formData, metadata) => {
     const record = library.add({
       ...metadata,
@@ -121,9 +131,11 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
 }
 
 function bindLibraryActions(root, library, render, active) {
+  const status = root.querySelector("[data-mutation-status]");
   root.querySelectorAll("[data-movie-action]").forEach((button) => button.addEventListener("click", async () => {
     const tmdbId = Number(button.dataset.movieId);
     button.disabled = true;
+    if (status) status.textContent = "Saving...";
     try {
       if (button.dataset.movieAction === "watched") {
         const changes = { status: "watched", watchedDate: new Date().toISOString().slice(0, 10) };
@@ -131,13 +143,28 @@ function bindLibraryActions(root, library, render, active) {
         library.update(tmdbId, updated);
         render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library");
       } else {
+        const record = library.find(tmdbId);
+        if (!window.confirm("Remove this title from your library?")) {
+          button.disabled = false;
+          if (status) status.textContent = "Ready.";
+          return;
+        }
         await deleteMovie(tmdbId, `${MOVIE_API_URL}/api/movies`);
         library.remove(tmdbId);
-        render(libraryPage(library, "wishlist", "Wishlist"), active);
+        button.closest(".movie-card")?.remove();
+        if (status) {
+          status.innerHTML = `Removed. <button class="text-link" data-undo>Undo</button>`;
+          status.querySelector("[data-undo]").addEventListener("click", async () => {
+            status.textContent = "Restoring...";
+            await saveMovie(record, `${MOVIE_API_URL}/api/movies`);
+            library.add(record);
+            render(libraryPage(library, "wishlist", "Wishlist"), active);
+          }, { once: true });
+        }
       }
     } catch (error) {
       button.disabled = false;
-      window.alert(error.message);
+      if (status) status.textContent = error.message;
     }
   }));
 }

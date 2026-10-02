@@ -2,10 +2,13 @@ import crypto from "node:crypto";
 import { createUser, findUser, reopenUser } from "../_lib/database.js";
 import { hashPassword } from "../_lib/passwords.js";
 import { setCors } from "../_lib/cors.js";
+import { rateLimit } from "../_lib/rate-limit.js";
 
 export default async function signup(request, response) {
   setCors(response);
   if (request.method === "OPTIONS") return response.status(204).end();
+  const retryAfter = rateLimit(request, "signup", 5, 15 * 60 * 1000);
+  if (retryAfter) return response.status(429).json({ error: "Too many account requests. Try again later.", retryAfter });
   try {
     const username = String(request.body?.username || "").trim().toLowerCase();
     const password = String(request.body?.password || "");

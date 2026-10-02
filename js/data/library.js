@@ -23,12 +23,13 @@ export function createLibrary(records) {
     stats() {
       const watched = entries.filter((entry) => entry.status === "watched");
       const viewed = entries.filter((entry) => entry.status === "watched" || entry.status === "watching");
+      const rated = watched.filter((entry) => Number.isFinite(Number(entry.rating)) && Number(entry.rating) > 0);
       return {
         total: entries.length,
         watched: entries.filter((entry) => entry.status === "watched" || entry.status === "watching").length,
         wishlist: entries.filter((entry) => entry.status === "wishlist").length,
         minutes: viewed.reduce((sum, entry) => sum + (entry.runtime || 0), 0),
-        averageRating: watched.length ? watched.reduce((sum, entry) => sum + (entry.rating || 0), 0) / watched.length : 0,
+        averageRating: rated.length ? rated.reduce((sum, entry) => sum + Number(entry.rating), 0) / rated.length : 0,
       };
     },
   };

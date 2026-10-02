@@ -16,7 +16,8 @@ export async function loadUpcoming(apiUrl = "") {
 
 export async function getSession(apiUrl) {
   const response = await fetch(`${apiUrl}/api/auth/me`, { cache: "no-store", credentials: "include" });
-  return response.json();
+  const result = await response.json();
+  return { ...result, sessionExpired: result.sessionExpired || false };
 }
 
 export async function logout(apiUrl) {

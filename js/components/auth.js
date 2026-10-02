@@ -1,5 +1,7 @@
-export function authPage() {
-  return `<main class="auth-page"><section class="auth-panel"><p class="eyebrow">YOUR PERSONAL FILM ARCHIVE</p><h1>Welcome to<br /><em>Movie Vault.</em></h1><p class="auth-copy">Create an account to keep your movie and series lists private and available wherever you sign in.</p><form data-auth-form><label>Username<input name="username" data-username required minlength="3" maxlength="24" autocomplete="username" placeholder="your name" /><p class="username-status" data-username-status></p></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters" /></label><button class="button button-primary" type="submit" data-auth-submit>Sign in <span>↗</span></button><p class="auth-message" data-auth-message></p></form><button class="text-link auth-toggle" type="button" data-auth-toggle>Create a new account</button></section></main>`;
+import { escapeHtml } from "../utils/escape.js";
+
+export function authPage(notice = "") {
+  return `<main class="auth-page"><section class="auth-panel"><p class="eyebrow">YOUR PERSONAL FILM ARCHIVE</p><h1>Welcome to<br /><em>Movie Vault.</em></h1><p class="auth-copy">Create an account to keep your movie and series lists private and available wherever you sign in.</p>${notice ? `<p class="auth-message">${escapeHtml(notice)}</p>` : ""}<form data-auth-form><label>Username<input name="username" data-username required minlength="3" maxlength="24" autocomplete="username" placeholder="your name" /><p class="username-status" data-username-status></p></label><label>Password<input name="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters" /></label><button class="button button-primary" type="submit" data-auth-submit>Sign in <span>↗</span></button><p class="auth-message" data-auth-message></p></form><button class="text-link auth-toggle" type="button" data-auth-toggle>Create a new account</button><button class="text-link" type="button" data-recovery-toggle>Use a recovery token</button><form data-recovery-form hidden><label>Recovery token<input name="resetToken" required autocomplete="one-time-code" /></label><label>New password<input name="newPassword" type="password" required minlength="8" autocomplete="new-password" /></label><button class="button button-quiet" type="submit">Reset password</button><p class="auth-message" data-recovery-message></p></form></section></main>`;
 }
 
 export function bindAuth(root, apiUrl) {
@@ -9,8 +11,20 @@ export function bindAuth(root, apiUrl) {
   const message = root.querySelector("[data-auth-message]");
   const username = root.querySelector("[data-username]");
   const usernameStatus = root.querySelector("[data-username-status]");
+  const recoveryToggle = root.querySelector("[data-recovery-toggle]");
+  const recoveryForm = root.querySelector("[data-recovery-form]");
+  const recoveryMessage = root.querySelector("[data-recovery-message]");
   let mode = "login";
   let availabilityTimer;
+  recoveryToggle.addEventListener("click", () => { recoveryForm.hidden = !recoveryForm.hidden; });
+  recoveryForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    recoveryMessage.textContent = "Working...";
+    const response = await fetch(`${apiUrl}/api/auth/recover`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.fromEntries(new FormData(recoveryForm))) });
+    const result = await response.json();
+    recoveryMessage.textContent = response.ok ? result.message : result.error;
+    if (response.ok) recoveryForm.reset();
+  });
   toggle.addEventListener("click", () => {
     mode = mode === "login" ? "signup" : "login";
     submit.innerHTML = mode === "login" ? "Sign in <span>↗</span>" : "Create account <span>↗</span>";
@@ -49,7 +63,7 @@ export function bindAuth(root, apiUrl) {
         submit.innerHTML = "Sign in <span>↗</span>";
         toggle.textContent = "Create a new account";
         message.classList.add("is-success");
-        message.innerHTML = `<strong>Request submitted.</strong><br />${result.message}`;
+        message.innerHTML = `<strong>Request submitted.</strong><br />${escapeHtml(result.message)}`;
         form.reset();
       } else {
         window.location.reload();

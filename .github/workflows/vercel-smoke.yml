@@ -1,0 +1,24 @@
+name: Vercel smoke checks
+
+on:
+  workflow_dispatch:
+    inputs:
+      smoke_url:
+        description: Deployed Movie Vault URL
+        required: true
+        type: string
+  deployment_status:
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run public smoke checks
+        env:
+          SMOKE_URL: ${{ inputs.smoke_url || github.event.deployment_status.target_url }}
+        run: node scripts/smoke.mjs

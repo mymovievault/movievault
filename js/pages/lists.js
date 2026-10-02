@@ -1,4 +1,5 @@
 import { movieCard } from "../components/movie-card.js";
+import { escapeAttr, escapeHtml } from "../utils/escape.js";
 
 export function listsPage(library) {
   return `<main><section class="page-heading"><p class="eyebrow">YOUR COLLECTIONS</p><h1>Watchlists</h1><p>Create private lists and share selected lists as read-only collections.</p><form class="list-create" data-create-list><input name="name" required maxlength="60" placeholder="New watchlist name" /><button class="button button-primary">Create list <span>+</span></button></form></section><section class="lists-grid" data-lists></section></main>`;
@@ -15,15 +16,15 @@ export async function bindLists(root, apiUrl, onListsChanged = () => {}) {
   const load = async () => {
     const lists = await request(`${apiUrl}/api/lists`);
     onListsChanged(lists);
-    const tabs = lists.map((list, index) => `<button type="button" class="list-tab${index === 0 ? " is-active" : ""}" data-list-tab="${list.id}">${list.name}<small>${list.is_owner ? "Your list" : "Shared"}</small></button>`).join("");
-    const selectOptions = lists.map((list) => `<option value="${list.id}">${list.name}${list.is_owner ? "" : " (shared)"}</option>`).join("");
+    const tabs = lists.map((list, index) => `<button type="button" class="list-tab${index === 0 ? " is-active" : ""}" data-list-tab="${escapeAttr(list.id)}">${escapeHtml(list.name)}<small>${list.is_owner ? "Your list" : "Shared"}</small></button>`).join("");
+    const selectOptions = lists.map((list) => `<option value="${escapeAttr(list.id)}">${escapeHtml(list.name)}${list.is_owner ? "" : " (shared)"}</option>`).join("");
     const panels = lists.map((list, index) => {
       const cards = (list.items || []).map((movie) => {
         const card = movieCard(movie);
         return list.is_owner ? card.replace("</article>", `<div class="library-actions"><button class="button button-primary" data-mark-watched="${list.id}" data-movie-id="${movie.tmdbId}">Mark watched</button><button class="button button-quiet" data-remove-item="${list.id}" data-movie-id="${movie.tmdbId}">Remove</button></div></article>`) : card;
       }).join("");
-      const sharedWith = list.is_owner && list.shared_with?.length ? `<div class="list-shares"><p class="list-owner">Shared with</p>${list.shared_with.map((username) => `<span>${username}<button type="button" class="text-link" data-revoke-share="${list.id}" data-share-user="${username}">Revoke</button></span>`).join("")}</div>` : "";
-      return `<article class="list-panel ${list.is_owner ? "is-owned" : "is-shared"}" data-list-panel="${list.id}"${index === 0 ? "" : " hidden"}><p class="eyebrow">${list.is_owner ? "YOUR LIST" : "SHARED WITH YOU"}</p><h2>${list.name}</h2><p class="list-owner">Owner: ${list.owner_username} / ${(list.items || []).length} title${(list.items || []).length === 1 ? "" : "s"}</p>${list.is_owner ? `<form data-share-list="${list.id}" class="share-form"><input name="username" required placeholder="Username to share with" /><button class="button button-quiet">Share read-only</button></form>${list.name !== "My Library" ? `<button class="button button-quiet list-delete" data-delete-list="${list.id}">Delete list</button>` : ""}${sharedWith}` : ""}<div class="movie-grid list-movie-grid">${cards || `<div class="empty-state">No movies in this list yet.</div>`}</div></article>`;
+      const sharedWith = list.is_owner && list.shared_with?.length ? `<div class="list-shares"><p class="list-owner">Shared with</p>${list.shared_with.map((username) => `<span>${escapeHtml(username)}<button type="button" class="text-link" data-revoke-share="${escapeAttr(list.id)}" data-share-user="${escapeAttr(username)}">Revoke</button></span>`).join("")}</div>` : "";
+      return `<article class="list-panel ${list.is_owner ? "is-owned" : "is-shared"}" data-list-panel="${escapeAttr(list.id)}"${index === 0 ? "" : " hidden"}><p class="eyebrow">${list.is_owner ? "YOUR LIST" : "SHARED WITH YOU"}</p><h2>${escapeHtml(list.name)}</h2><p class="list-owner">Owner: ${escapeHtml(list.owner_username)} / ${(list.items || []).length} title${(list.items || []).length === 1 ? "" : "s"}</p>${list.is_owner ? `<form data-share-list="${escapeAttr(list.id)}" class="share-form"><input name="username" required placeholder="Username to share with" /><button class="button button-quiet">Share read-only</button></form>${list.name !== "My Library" ? `<button class="button button-quiet list-delete" data-delete-list="${escapeAttr(list.id)}">Delete list</button>` : ""}${sharedWith}` : ""}<div class="movie-grid list-movie-grid">${cards || `<div class="empty-state">No movies in this list yet.</div>`}</div></article>`;
     }).join("");
     container.innerHTML = lists.length ? `<div class="list-tabs" role="tablist">${tabs}</div><label class="list-select">Show<select data-list-select>${selectOptions}</select></label><div class="list-panels">${panels}</div>` : `<div class="empty-state">No watchlists yet.</div>`;
     const selectList = (selected, source) => {
