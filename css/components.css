@@ -45,7 +45,7 @@
 .admin-actions .button { padding: 9px 12px; }
 .list-create, .share-form { display: flex; gap: 10px; max-width: 620px; margin-top: 24px; }
 .list-create input, .share-form input { flex: 1; min-width: 0; padding: 11px 0; color: #e9e5dc; background: transparent; border: 0; border-bottom: 1px solid #50564e; outline: 0; }
-.lists-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; padding-bottom: 80px; }
+.lists-grid { display: block; padding-bottom: 80px; }
 .list-tabs { display: flex; gap: 7px; max-width: 100%; margin-bottom: 18px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .list-tab { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-start; gap: 4px; padding: 9px 13px; color: #828781; background: transparent; border: 1px solid #343833; border-radius: 999px; font: 10px "DM Mono", monospace; text-align: left; text-transform: uppercase; white-space: nowrap; }
 .list-tab small { color: #60665f; font-size: 8px; text-transform: none; }
