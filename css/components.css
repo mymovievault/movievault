@@ -59,6 +59,8 @@
 @media (max-width: 720px) { .lists-grid { grid-template-columns: 1fr; } .list-create, .share-form { flex-wrap: wrap; } }
 .upcoming-add { padding: 7px 9px; color: #d8a35d; border-color: #50564e; white-space: nowrap; }
 .upcoming-filters { display: flex; gap: 7px; max-width: 100%; margin-top: 25px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.upcoming-filter-select { display: none; align-items: center; gap: 12px; margin-top: 22px; color: #828781; font: 10px "DM Mono", monospace; text-transform: uppercase; }
+.upcoming-filter-select select { flex: 1; min-width: 0; padding: 11px; color: #e9e5dc; background: #252925; border: 1px solid #50564e; font-size: 12px; }
 .upcoming-filter-button { flex: 0 0 auto; padding: 9px 13px; color: #828781; background: transparent; border: 1px solid #343833; border-radius: 999px; font: 10px "DM Mono", monospace; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
 .upcoming-filter-button:hover, .upcoming-filter-button.is-active { color: #101211; background: #d8a35d; border-color: #d8a35d; }
 .upcoming-add:hover { color: #101211; background: #d8a35d; border-color: #d8a35d; }
@@ -109,3 +111,4 @@ blockquote { max-width: 480px; margin: 0 0 35px; padding-left: 18px; color: #e9e
 @media (max-width: 600px) { .movie-form { padding: 22px; } .form-grid { grid-template-columns: 1fr; } .form-wide { grid-column: auto; } }
 @media (max-width: 720px) { .account-name { display: none; } .auth-panel { padding: 30px 22px; } .auth-panel h1 { font-size: 45px; } }
 @media (max-width: 420px) { .topbar, main, footer { width: calc(100% - 24px); } .brand { font-size: 13px; } .nav-link { font-size: 10px; } .button { padding: 11px 12px; gap: 10px; } .movie-grid, .movie-grid-large { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 10px; } .movie-meta { flex-wrap: wrap; } .movie-meta h3 { font-size: 12px; } .movie-meta p { font-size: 9px; } .stats-grid strong { font-size: 25px; } .stats-grid span { font-size: 9px; line-height: 1.35; } .page-heading { padding: 38px 0 30px; } .page-heading h1 { font-size: 43px; } .library-actions, .form-actions, .list-create, .share-form { align-items: stretch; flex-direction: column; } .library-actions .button, .list-create .button, .share-form .button { width: 100%; justify-content: center; } .release-reminders a { align-items: flex-start; flex-direction: column; gap: 5px; } }
+@media (max-width: 720px) { .upcoming-filters { display: none; } .upcoming-filter-select { display: flex; } }

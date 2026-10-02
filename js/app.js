@@ -142,11 +142,14 @@ function bindLibraryActions(root, library, render, active) {
 }
 
 function bindUpcoming(root, entries, library, render) {
-  root.querySelectorAll("[data-upcoming-filter]").forEach((button) => button.addEventListener("click", () => {
-    const selected = button.dataset.upcomingFilter;
-    root.querySelectorAll("[data-upcoming-filter]").forEach((item) => item.classList.toggle("is-active", item === button));
+  const applyUpcomingFilter = (selected, source) => {
+    root.querySelectorAll("[data-upcoming-filter]").forEach((item) => item.classList.toggle("is-active", item.dataset.upcomingFilter === selected));
+    const select = root.querySelector("[data-upcoming-select]");
+    if (select && source !== select) select.value = selected;
     root.querySelectorAll("[data-upcoming-section]").forEach((section) => { section.hidden = selected !== "All" && section.dataset.upcomingSection !== selected; });
-  }));
+  };
+  root.querySelectorAll("[data-upcoming-filter]").forEach((button) => button.addEventListener("click", () => applyUpcomingFilter(button.dataset.upcomingFilter, button)));
+  root.querySelector("[data-upcoming-select]")?.addEventListener("change", (event) => applyUpcomingFilter(event.target.value, event.target));
   root.querySelectorAll("[data-add-upcoming]").forEach((button) => button.addEventListener("click", async () => {
     const source = entries.find((entry) => String(entry.tmdbId) === button.dataset.addUpcoming);
     if (!source) return;
