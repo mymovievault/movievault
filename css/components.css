@@ -115,6 +115,7 @@
 .filter-bar { display: flex; gap: 8px; margin-top: 20px; }
 .filter-button { padding: 7px 10px; color: #828781; background: transparent; border: 1px solid #343833; font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .filter-button.is-active, .filter-button:hover { color: #101211; background: #d8a35d; border-color: #d8a35d; }
+.library-result-count { margin-top: 12px; color: #828781; font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .library-filters { display: flex; gap: 12px; margin-top: 22px; }
 .library-filters label { display: flex; align-items: center; gap: 8px; color: #828781; font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .library-filters select { padding: 8px 10px; color: #e9e5dc; background: #252925; border: 1px solid #50564e; font-size: 11px; text-transform: none; }

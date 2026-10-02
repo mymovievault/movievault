@@ -16,11 +16,14 @@ export function bindLibraryFilters(root) {
   const apply = () => {
     const type = root.querySelector("[data-library-type]")?.value || "all";
     const genre = root.querySelector("[data-library-genre]")?.value || "all";
-    root.querySelectorAll(".movie-card").forEach((card) => {
+    const cards = [...root.querySelectorAll(".movie-card")];
+    cards.forEach((card) => {
       const matchesType = type === "all" || (type === "anime" ? card.dataset.anime === "true" : card.dataset.mediaType === type);
       const matchesGenre = genre === "all" || card.dataset.genres?.split(",").includes(genre);
       card.hidden = !(matchesType && matchesGenre);
     });
+    const count = root.querySelector("[data-library-count]");
+    if (count) count.textContent = `Showing ${cards.filter((card) => !card.hidden).length} of ${cards.length} titles`;
   };
   root.querySelectorAll("[data-library-type], [data-library-genre]").forEach((control) => control.addEventListener("change", apply));
 }
