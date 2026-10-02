@@ -28,6 +28,9 @@
 .auth-panel label { display: block; margin-top: 18px; color: #828781; font: 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
 .auth-panel input { display: block; width: 100%; margin-top: 8px; padding: 12px 0; color: #e9e5dc; background: transparent; border: 0; border-bottom: 1px solid #50564e; outline: 0; font-size: 14px; text-transform: none; }
 .auth-panel input:focus { border-color: #d8a35d; }
+.username-status { min-height: 14px; margin: 7px 0 0; color: #828781; font: 10px "DM Mono", monospace; text-transform: none; }
+.username-status.is-available { color: #b8d39d; }
+.username-status.is-taken { color: #d8a35d; }
 .auth-panel [data-auth-submit] { margin-top: 28px; }
 .auth-message { min-height: 18px; margin: 15px 0 0; color: #d8a35d; font: 10px "DM Mono", monospace; }
 .auth-message.is-success { padding: 12px; color: #b8d39d; border: 1px solid #536746; background: rgba(184, 211, 157, .08); line-height: 1.7; }
