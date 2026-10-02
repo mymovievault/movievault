@@ -19,8 +19,11 @@ main { width: min(1200px, calc(100% - 48px)); margin: 0 auto; flex: 1; }
 .stats-grid strong { display: block; font-size: 32px; font-weight: 500; letter-spacing: -.04em; }
 .stats-grid span { display: block; color: #80867f; font: 11px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; margin-top: 6px; }
 .section-block { padding-bottom: 80px; }
+.upcoming-section { padding-bottom: 38px; }
+.upcoming-section .movie-grid-large { padding-bottom: 35px; }
 .section-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 30px; }
 .section-heading h2 { margin: 8px 0 0; font-size: 25px; letter-spacing: -.03em; }
+.section-count { color: #828781; font: 10px "DM Mono", monospace; text-transform: uppercase; }
 .movie-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px 23px; }
 .movie-grid-large { grid-template-columns: repeat(4, 1fr); padding-bottom: 80px; }
 .page-heading { padding: 55px 0 45px; }
