@@ -40,6 +40,8 @@
 .admin-actions .button { padding: 9px 12px; }
 .upcoming-add { padding: 7px 9px; color: #d8a35d; border-color: #50564e; white-space: nowrap; }
 .upcoming-add:hover { color: #101211; background: #d8a35d; border-color: #d8a35d; }
+.library-actions { display: flex; gap: 8px; padding-top: 12px; }
+.library-actions .button { padding: 8px 10px; font-size: 9px; }
 .release-reminders { margin: 0 0 55px; padding: 18px 20px; border-left: 2px solid #d8a35d; background: rgba(216, 163, 93, .08); }
 .release-reminders a { display: flex; justify-content: space-between; gap: 20px; padding-top: 11px; }
 .release-reminders strong { font-size: 13px; font-weight: 600; }

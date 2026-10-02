@@ -1,5 +1,5 @@
 import { startRouter, registerRoute } from "./router.js";
-import { loadFlatFile, loadUpcoming, saveMovie, getSession, logout } from "./data/storage.js";
+import { loadFlatFile, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, logout } from "./data/storage.js";
 import { createLibrary } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
@@ -33,7 +33,7 @@ async function boot() {
       bindNavigation();
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
       else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render);
-      else bindShelfControls(library, render, tmdbClient, theatreClient);
+      else bindShelfControls(library, render, tmdbClient, theatreClient, active);
     };
 
     registerRoute("/", () => render(homePage(library), "/"));
@@ -67,7 +67,7 @@ function bindNavigation() {
   });
 }
 
-function bindShelfControls(library, render, tmdbClient, theatreClient) {
+function bindShelfControls(library, render, tmdbClient, theatreClient, active) {
   const root = document.querySelector("main");
   if (!root) return;
   bindFilters(root);
@@ -104,6 +104,29 @@ function bindShelfControls(library, render, tmdbClient, theatreClient) {
     const query = search.value.toLowerCase();
     root.querySelectorAll(".movie-card").forEach((card) => { card.hidden = !card.textContent.toLowerCase().includes(query); });
   });
+  bindLibraryActions(root, library, render, active);
+}
+
+function bindLibraryActions(root, library, render, active) {
+  root.querySelectorAll("[data-movie-action]").forEach((button) => button.addEventListener("click", async () => {
+    const tmdbId = Number(button.dataset.movieId);
+    button.disabled = true;
+    try {
+      if (button.dataset.movieAction === "watched") {
+        const changes = { status: "watched", watchedDate: new Date().toISOString().slice(0, 10) };
+        const updated = await updateMovie(tmdbId, changes, `${MOVIE_API_URL}/api/movies`);
+        library.update(tmdbId, updated);
+        render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library");
+      } else {
+        await deleteMovie(tmdbId, `${MOVIE_API_URL}/api/movies`);
+        library.remove(tmdbId);
+        render(libraryPage(library, "wishlist", "Wishlist"), active);
+      }
+    } catch (error) {
+      button.disabled = false;
+      window.alert(error.message);
+    }
+  }));
 }
 
 function bindUpcoming(root, entries, library, render) {

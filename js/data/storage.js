@@ -31,3 +31,18 @@ export async function saveMovie(record, apiUrl) {
   return result;
 }
 
+async function changeMovie(method, tmdbId, changes, apiUrl) {
+  const response = await fetch(apiUrl, { method, credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tmdbId, changes }) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Could not update movie.");
+  return result;
+}
+
+export function updateMovie(tmdbId, changes, apiUrl) {
+  return changeMovie("PATCH", tmdbId, changes, apiUrl);
+}
+
+export function deleteMovie(tmdbId, apiUrl) {
+  return changeMovie("DELETE", tmdbId, {}, apiUrl);
+}
+

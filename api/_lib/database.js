@@ -42,6 +42,18 @@ export async function upsertMovie(record, ownerLogin) {
   return record;
 }
 
+export async function updateMovie(tmdbId, changes, ownerLogin) {
+  const sql = await ready();
+  const rows = await sql`UPDATE movies SET record = record || ${JSON.stringify(changes)}::jsonb, created_at = NOW() WHERE tmdb_id = ${String(tmdbId)} AND owner_login = ${ownerLogin} RETURNING record`;
+  return rows[0]?.record || null;
+}
+
+export async function deleteMovie(tmdbId, ownerLogin) {
+  const sql = await ready();
+  const rows = await sql`DELETE FROM movies WHERE tmdb_id = ${String(tmdbId)} AND owner_login = ${ownerLogin} RETURNING record`;
+  return rows[0]?.record || null;
+}
+
 export async function seedMovies(records, ownerLogin) {
   await ready();
   for (const record of records) await upsertMovie(record, ownerLogin);
