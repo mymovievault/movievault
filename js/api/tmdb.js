@@ -38,7 +38,7 @@ export function createTmdbClient({ token, apiUrl } = {}) {
       };
     },
     async providers(item, region = "IN") {
-      if (!token || !item.mediaType) return [];
+      if ((!token && !apiUrl) || !item.mediaType) return [];
       const data = await request(`/${item.mediaType}/${item.tmdbId}/watch/providers`);
       const regionData = data.results?.[region] || {};
       return [

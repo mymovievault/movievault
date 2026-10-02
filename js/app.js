@@ -6,7 +6,7 @@ import { libraryPage } from "./pages/library.js";
 import { wishlistPage } from "./pages/wishlist.js";
 import { upcomingPage } from "./pages/upcoming.js";
 import { movieModal } from "./components/movie-modal.js";
-import { bindFilters } from "./components/filters.js";
+import { bindFilters, bindLibraryFilters } from "./components/filters.js";
 import { bindMovieForm } from "./components/movie-form.js";
 import { createTmdbClient } from "./api/tmdb.js";
 import { TMDB_READ_TOKEN, MOVIE_API_URL } from "./config.js";
@@ -82,6 +82,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
   const root = document.querySelector("main");
   if (!root) return;
   bindFilters(root);
+  bindLibraryFilters(root);
   bindMovieForm(root, async (formData, metadata) => {
     const record = library.add({
       ...metadata,
