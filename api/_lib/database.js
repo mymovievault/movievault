@@ -66,6 +66,12 @@ export async function createUser(id, username, passwordHash) {
   return rows[0];
 }
 
+export async function reopenUser(id, passwordHash) {
+  const sql = await ready();
+  const rows = await sql`UPDATE users SET password_hash = ${passwordHash}, status = 'pending', role = 'member' WHERE id = ${id} AND status = 'rejected' RETURNING id, username, status, role`;
+  return rows[0] || null;
+}
+
 export async function findUser(username) {
   const sql = await ready();
   const rows = await sql`SELECT id, username, password_hash, status, role FROM users WHERE username = ${username}`;
