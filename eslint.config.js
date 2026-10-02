@@ -14,6 +14,7 @@ export default [
         console: "readonly",
         document: "readonly",
         fetch: "readonly",
+        location: "readonly",
         process: "readonly",
         setTimeout: "readonly",
         structuredClone: "readonly",
