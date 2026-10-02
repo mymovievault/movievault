@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 
 let schemaPromise;
@@ -24,6 +25,11 @@ async function ready() {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`;
       await sql`UPDATE users SET status = 'approved', role = 'admin' WHERE username = ${process.env.ADMIN_USERNAME || "abilash9007"}`;
       await sql`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL)`;
+      await sql`CREATE TABLE IF NOT EXISTS watchlists (id TEXT PRIMARY KEY, owner_username TEXT NOT NULL, name TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (owner_username, name))`;
+      await sql`CREATE TABLE IF NOT EXISTS watchlist_shares (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, viewer_username TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, viewer_username))`;
+      await sql`CREATE TABLE IF NOT EXISTS watchlist_items (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, tmdb_id TEXT NOT NULL, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, tmdb_id))`;
+      await sql`INSERT INTO watchlists (id, owner_username, name) SELECT md5(username || ':main'), username, 'My Library' FROM users ON CONFLICT (owner_username, name) DO NOTHING`;
+      await sql`INSERT INTO watchlist_items (watchlist_id, tmdb_id, record) SELECT md5(m.owner_login || ':main'), m.tmdb_id, m.record FROM movies m ON CONFLICT (watchlist_id, tmdb_id) DO NOTHING`;
     })();
   }
   await schemaPromise;
@@ -102,6 +108,54 @@ export async function listPendingUsers() {
 export async function listUsers() {
   const sql = await ready();
   return sql`SELECT id, username, status, role, created_at FROM users ORDER BY created_at ASC`;
+}
+
+export async function listWatchlists(username) {
+  const sql = await ready();
+  return sql`SELECT w.id, w.name, w.owner_username, w.owner_username = ${username} AS is_owner, COALESCE((SELECT json_agg(i.record ORDER BY i.created_at DESC) FROM watchlist_items i WHERE i.watchlist_id = w.id), '[]'::json) AS items, COALESCE((SELECT json_agg(s.viewer_username ORDER BY s.viewer_username) FROM watchlist_shares s WHERE s.watchlist_id = w.id), '[]'::json) AS shared_with FROM watchlists w WHERE w.owner_username = ${username} OR EXISTS (SELECT 1 FROM watchlist_shares s WHERE s.watchlist_id = w.id AND s.viewer_username = ${username}) ORDER BY w.created_at`;
+}
+
+export async function listWatchlistItems(username, listId) {
+  const sql = await ready();
+  const rows = await sql`SELECT i.record FROM watchlist_items i JOIN watchlists w ON w.id = i.watchlist_id WHERE i.watchlist_id = ${listId} AND (w.owner_username = ${username} OR EXISTS (SELECT 1 FROM watchlist_shares s WHERE s.watchlist_id = w.id AND s.viewer_username = ${username})) ORDER BY i.created_at DESC`;
+  return rows.map((row) => row.record);
+}
+
+export async function addWatchlistItem(username, listId, record) {
+  const sql = await ready();
+  const rows = await sql`INSERT INTO watchlist_items (watchlist_id, tmdb_id, record) SELECT ${listId}, ${String(record.tmdbId)}, ${JSON.stringify(record)}::jsonb WHERE EXISTS (SELECT 1 FROM watchlists WHERE id = ${listId} AND owner_username = ${username}) ON CONFLICT (watchlist_id, tmdb_id) DO UPDATE SET record = EXCLUDED.record, created_at = NOW() RETURNING record`;
+  return rows[0]?.record || null;
+}
+
+export async function updateWatchlistItem(username, listId, tmdbId, changes) {
+  const sql = await ready();
+  const rows = await sql`UPDATE watchlist_items i SET record = i.record || ${JSON.stringify(changes)}::jsonb, created_at = NOW() FROM watchlists w WHERE i.watchlist_id = ${listId} AND i.tmdb_id = ${String(tmdbId)} AND w.id = i.watchlist_id AND w.owner_username = ${username} RETURNING i.record`;
+  return rows[0]?.record || null;
+}
+
+export async function deleteWatchlistItem(username, listId, tmdbId) {
+  const sql = await ready();
+  const rows = await sql`DELETE FROM watchlist_items i USING watchlists w WHERE i.watchlist_id = ${listId} AND i.tmdb_id = ${String(tmdbId)} AND w.id = i.watchlist_id AND w.owner_username = ${username} RETURNING i.record`;
+  return rows[0]?.record || null;
+}
+
+export async function createWatchlist(username, name) {
+  const sql = await ready();
+  const id = crypto.randomUUID();
+  const rows = await sql`INSERT INTO watchlists (id, owner_username, name) VALUES (${id}, ${username}, ${name}) RETURNING id, name, owner_username`;
+  return rows[0];
+}
+
+export async function shareWatchlist(username, listId, viewerUsername) {
+  const sql = await ready();
+  const rows = await sql`INSERT INTO watchlist_shares (watchlist_id, viewer_username) SELECT ${listId}, ${viewerUsername} WHERE EXISTS (SELECT 1 FROM watchlists WHERE id = ${listId} AND owner_username = ${username}) RETURNING watchlist_id, viewer_username`;
+  return rows[0] || null;
+}
+
+export async function revokeWatchlistShare(username, listId, viewerUsername) {
+  const sql = await ready();
+  const rows = await sql`DELETE FROM watchlist_shares s USING watchlists w WHERE s.watchlist_id = ${listId} AND s.viewer_username = ${viewerUsername} AND w.id = s.watchlist_id AND w.owner_username = ${username} RETURNING s.watchlist_id, s.viewer_username`;
+  return rows[0] || null;
 }
 
 export async function updateUserStatus(userId, status) {

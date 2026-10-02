@@ -1,5 +1,5 @@
 import { startRouter, registerRoute } from "./router.js";
-import { loadFlatFile, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, logout } from "./data/storage.js";
+import { loadFlatFile, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, logout } from "./data/storage.js";
 import { createLibrary } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
@@ -13,6 +13,7 @@ import { TMDB_READ_TOKEN, MOVIE_API_URL } from "./config.js";
 import { createTheatreClient } from "./api/places.js";
 import { authPage, bindAuth } from "./components/auth.js";
 import { adminPage, bindAdmin } from "./components/admin.js";
+import { listsPage, bindLists } from "./pages/lists.js";
 
 const app = document.querySelector("#app");
 
@@ -25,6 +26,7 @@ async function boot() {
       return;
     }
     const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
+    let watchlists = MOVIE_API_URL ? await loadWatchlists(MOVIE_API_URL) : [];
     let curatedUpcoming = [];
     try {
       curatedUpcoming = await loadUpcoming(MOVIE_API_URL);
@@ -39,15 +41,17 @@ async function boot() {
       app.innerHTML = shell(content, active, library, session);
       bindNavigation();
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
+      else if (active === "/lists") bindLists(app, MOVIE_API_URL, (lists) => { watchlists = lists; });
       else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render);
-      else bindShelfControls(library, render, tmdbClient, theatreClient, active);
+      else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists);
     };
 
-    registerRoute("/", () => render(homePage(library), "/"));
+    registerRoute("/", () => render(homePage(library, watchlists), "/"));
     registerRoute("/library", () => render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library"));
     registerRoute("/wishlist", () => render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist"));
     registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming), "/upcoming"));
     registerRoute("/admin", () => render(adminPage(), "/admin"));
+    registerRoute("/lists", () => render(listsPage(), "/lists"));
     registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
     startRouter((route, path) => route(path));
 
@@ -59,7 +63,7 @@ async function boot() {
 function shell(content, active, library, session) {
   const stats = library.stats();
   const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/wishlist", "Wishlist", active)}${navItem("/lists", "Lists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${session.login}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
@@ -74,7 +78,7 @@ function bindNavigation() {
   });
 }
 
-function bindShelfControls(library, render, tmdbClient, theatreClient, active) {
+function bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists) {
   const root = document.querySelector("main");
   if (!root) return;
   bindFilters(root);
@@ -95,6 +99,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active) {
       ottPlatform: formData.ottPlatform.trim(),
       ottAvailability: formData.ottAvailability,
       theatreName: formData.theatreName.trim(),
+      listId: formData.listId,
     });
     try {
       await saveMovie(record, MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : "");
@@ -105,7 +110,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active) {
       library.remove(record.tmdbId);
       window.alert(error.message);
     }
-  }, tmdbClient, theatreClient);
+  }, tmdbClient, theatreClient, watchlists);
   const search = root.querySelector("[data-search]");
   if (search) search.addEventListener("input", () => {
     const query = search.value.toLowerCase();

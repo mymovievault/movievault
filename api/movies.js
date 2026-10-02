@@ -1,4 +1,4 @@
-import { deleteMovie, listMovies, updateMovie, upsertMovie } from "./_lib/database.js";
+import { addWatchlistItem, deleteMovie, listMovies, updateMovie, upsertMovie } from "./_lib/database.js";
 import { readSession } from "./_lib/session.js";
 
 function headers(response) {
@@ -26,6 +26,10 @@ export default async function movies(request, response) {
     if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
     if (!request.body?.title || typeof request.body.title !== "string") return response.status(400).json({ error: "A movie title is required" });
     const record = { ...request.body, tmdbId: request.body.tmdbId || Date.now() };
+    if (request.body.listId) {
+      const added = await addWatchlistItem(session.username, request.body.listId, record);
+      if (!added) return response.status(404).json({ error: "Watchlist not found or not owned by you." });
+    }
     await upsertMovie(record, session.username);
     return response.status(201).json(record);
   } catch (error) {
