@@ -1,4 +1,4 @@
-import { listPendingUsers, updateUserStatus } from "../_lib/database.js";
+import { listPendingUsers, listUsers, updateUserStatus } from "../_lib/database.js";
 import { readSession } from "../_lib/session.js";
 import { setCors } from "../_lib/cors.js";
 
@@ -8,7 +8,7 @@ export default async function requests(request, response) {
   try {
     const session = await readSession(request);
     if (!session || session.role !== "admin") return response.status(403).json({ error: "Admin access required." });
-    if (request.method === "GET") return response.status(200).json(await listPendingUsers());
+    if (request.method === "GET") return response.status(200).json({ pending: await listPendingUsers(), users: await listUsers() });
     if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
     const userId = String(request.body?.userId || "");
     const status = request.body?.status;

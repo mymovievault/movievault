@@ -99,6 +99,11 @@ export async function listPendingUsers() {
   return sql`SELECT id, username, created_at FROM users WHERE status = 'pending' ORDER BY created_at ASC`;
 }
 
+export async function listUsers() {
+  const sql = await ready();
+  return sql`SELECT id, username, status, role, created_at FROM users ORDER BY created_at ASC`;
+}
+
 export async function updateUserStatus(userId, status) {
   const sql = await ready();
   const rows = await sql`UPDATE users SET status = ${status} WHERE id = ${userId} RETURNING id, username, status`;
