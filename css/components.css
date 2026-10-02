@@ -51,6 +51,7 @@
 .list-owner { color: #828781; font: 10px "DM Mono", monospace; }
 .share-form { margin-top: 20px; }
 .share-form button { white-space: nowrap; }
+.list-delete { margin-top: 14px; color: #d8a35d; }
 .list-shares { margin-top: 18px; }
 .list-shares > span { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; color: #b6bbb3; font: 11px "DM Mono", monospace; border-top: 1px solid #343833; }
 .list-shares .text-link { padding: 0; border: 0; }

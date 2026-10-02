@@ -1,4 +1,4 @@
-import { addWatchlistItem, createWatchlist, deleteWatchlistItem, listWatchlistItems, listWatchlists, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "./_lib/database.js";
+import { addWatchlistItem, createWatchlist, deleteWatchlist, deleteWatchlistItem, listWatchlistItems, listWatchlists, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "./_lib/database.js";
 import { readSession } from "./_lib/session.js";
 import { setCors } from "./_lib/cors.js";
 
@@ -30,6 +30,10 @@ export default async function lists(request, response) {
       return updated ? response.status(200).json(updated) : response.status(404).json({ error: "Watchlist item not found or not owned by you." });
     }
     if (request.method === "DELETE") {
+      if (request.body?.action === "delete-list") {
+        const deletedList = await deleteWatchlist(session.username, request.body.listId);
+        return deletedList ? response.status(200).json(deletedList) : response.status(404).json({ error: "Only owned custom watchlists can be deleted." });
+      }
       if (request.body?.action === "revoke") {
         const revoked = await revokeWatchlistShare(session.username, request.body.listId, String(request.body.username || "").trim().toLowerCase());
         return revoked ? response.status(200).json(revoked) : response.status(404).json({ error: "Share not found or not owned by you." });

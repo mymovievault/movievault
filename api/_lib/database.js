@@ -158,6 +158,12 @@ export async function revokeWatchlistShare(username, listId, viewerUsername) {
   return rows[0] || null;
 }
 
+export async function deleteWatchlist(username, listId) {
+  const sql = await ready();
+  const rows = await sql`DELETE FROM watchlists WHERE id = ${listId} AND owner_username = ${username} AND name <> 'My Library' RETURNING id, name`;
+  return rows[0] || null;
+}
+
 export async function updateUserStatus(userId, status) {
   const sql = await ready();
   const rows = await sql`UPDATE users SET status = ${status} WHERE id = ${userId} RETURNING id, username, status`;

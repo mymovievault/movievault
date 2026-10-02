@@ -35,7 +35,7 @@ async function boot() {
         curatedUpcoming = await loadUpcoming();
       } catch {}
     }
-    const tmdbClient = TMDB_READ_TOKEN ? createTmdbClient({ token: TMDB_READ_TOKEN }) : null;
+    const tmdbClient = TMDB_READ_TOKEN || MOVIE_API_URL ? createTmdbClient({ token: TMDB_READ_TOKEN, apiUrl: MOVIE_API_URL }) : null;
     const theatreClient = createTheatreClient();
     const render = (content, active) => {
       app.innerHTML = shell(content, active, library, session);

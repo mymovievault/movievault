@@ -5,9 +5,10 @@ export function imageUrl(path, size = "w500") {
   return path.startsWith("http") ? path : `${IMAGE_BASE}${size}${path}`;
 }
 
-export function createTmdbClient({ token } = {}) {
-  const request = (path) => fetch(`https://api.themoviedb.org/3${path}`, {
-    headers: { Authorization: `Bearer ${token}`, accept: "application/json" },
+export function createTmdbClient({ token, apiUrl } = {}) {
+  const request = (path) => fetch(token ? `https://api.themoviedb.org/3${path}` : `${apiUrl}/api/tmdb?path=${encodeURIComponent(path)}`, {
+    headers: token ? { Authorization: `Bearer ${token}`, accept: "application/json" } : { accept: "application/json" },
+    credentials: "include",
   }).then((response) => {
     if (!response.ok) throw new Error("TMDB request failed");
     return response.json();
@@ -15,7 +16,7 @@ export function createTmdbClient({ token } = {}) {
 
   return {
     async search(query) {
-      if (!token) return [];
+      if (!token && !apiUrl) return [];
       const data = await request(`/search/multi?query=${encodeURIComponent(query)}&include_adult=false&language=en-US`);
       return data.results.filter((item) => item.media_type === "movie" || item.media_type === "tv");
     },

@@ -22,7 +22,7 @@ export async function bindLists(root, apiUrl, onListsChanged = () => {}) {
         return list.is_owner ? card.replace("</article>", `<div class="library-actions"><button class="button button-quiet" data-remove-item="${list.id}" data-movie-id="${movie.tmdbId}">Remove</button></div></article>`) : card;
       }).join("");
       const sharedWith = list.is_owner && list.shared_with?.length ? `<div class="list-shares"><p class="list-owner">Shared with</p>${list.shared_with.map((username) => `<span>${username}<button type="button" class="text-link" data-revoke-share="${list.id}" data-share-user="${username}">Revoke</button></span>`).join("")}</div>` : "";
-      return `<article class="list-panel"><p class="eyebrow">${list.is_owner ? "YOUR LIST" : "SHARED WITH YOU"}</p><h2>${list.name}</h2><p class="list-owner">Owner: ${list.owner_username} / ${(list.items || []).length} title${(list.items || []).length === 1 ? "" : "s"}</p>${list.is_owner ? `<form data-share-list="${list.id}" class="share-form"><input name="username" required placeholder="Username to share with" /><button class="button button-quiet">Share read-only</button></form>${sharedWith}` : ""}<div class="movie-grid list-movie-grid">${cards || `<div class="empty-state">No movies in this list yet.</div>`}</div></article>`;
+      return `<article class="list-panel"><p class="eyebrow">${list.is_owner ? "YOUR LIST" : "SHARED WITH YOU"}</p><h2>${list.name}</h2><p class="list-owner">Owner: ${list.owner_username} / ${(list.items || []).length} title${(list.items || []).length === 1 ? "" : "s"}</p>${list.is_owner ? `<form data-share-list="${list.id}" class="share-form"><input name="username" required placeholder="Username to share with" /><button class="button button-quiet">Share read-only</button></form>${list.name !== "My Library" ? `<button class="button button-quiet list-delete" data-delete-list="${list.id}">Delete list</button>` : ""}${sharedWith}` : ""}<div class="movie-grid list-movie-grid">${cards || `<div class="empty-state">No movies in this list yet.</div>`}</div></article>`;
     }).join("") || `<div class="empty-state">No watchlists yet.</div>`;
     container.querySelectorAll("[data-share-list]").forEach((form) => form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -34,6 +34,10 @@ export async function bindLists(root, apiUrl, onListsChanged = () => {}) {
     }));
     container.querySelectorAll("[data-remove-item]").forEach((button) => button.addEventListener("click", async () => {
       try { await request(`${apiUrl}/api/lists`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ listId: button.dataset.removeItem, tmdbId: button.dataset.movieId }) }); await load(); } catch (error) { window.alert(error.message); }
+    }));
+    container.querySelectorAll("[data-delete-list]").forEach((button) => button.addEventListener("click", async () => {
+      if (!window.confirm("Delete this watchlist and its movies?")) return;
+      try { await request(`${apiUrl}/api/lists`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete-list", listId: button.dataset.deleteList }) }); await load(); } catch (error) { window.alert(error.message); }
     }));
   };
   root.querySelector("[data-create-list]").addEventListener("submit", async (event) => {
