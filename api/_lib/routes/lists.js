@@ -1,7 +1,7 @@
-import { addWatchlistItem, createWatchlist, deleteWatchlist, deleteWatchlistItem, searchApprovedUsernames, listWatchlistItems, listWatchlists, recordAudit, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "./_lib/database.js";
-import { readSession } from "./_lib/session.js";
-import { setCors } from "./_lib/cors.js";
-import { rateLimit } from "./_lib/rate-limit.js";
+import { addWatchlistItem, createWatchlist, deleteWatchlist, deleteWatchlistItem, searchApprovedUsernames, listWatchlistItems, listWatchlists, recordAudit, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "../database.js";
+import { readSession } from "../session.js";
+import { setCors } from "../cors.js";
+import { rateLimit } from "../rate-limit.js";
 
 export default async function lists(request, response) {
   setCors(response);

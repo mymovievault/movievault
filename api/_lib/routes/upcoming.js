@@ -1,4 +1,4 @@
-import { setCors } from "./_lib/cors.js";
+import { setCors } from "../cors.js";
 
 const LANGUAGES = [["ta", "Tamil"], ["te", "Telugu"], ["ml", "Malayalam"], ["kn", "Kannada"], ["hi", "Hindi"], ["en", "English"]];
 

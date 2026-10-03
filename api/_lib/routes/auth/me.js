@@ -1,5 +1,5 @@
-import { readSession } from "../_lib/session.js";
-import { setCors } from "../_lib/cors.js";
+import { readSession } from "../../session.js";
+import { setCors } from "../../cors.js";
 
 export default async function me(request, response) {
   setCors(response);
