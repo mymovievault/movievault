@@ -17,9 +17,21 @@ async function ready() {
       await sql`ALTER TABLE movies ADD COLUMN IF NOT EXISTS owner_login TEXT`;
       await sql`UPDATE movies SET owner_login = COALESCE(owner_login, ${process.env.GITHUB_SEED_OWNER || "abilash9007"}) WHERE owner_login IS NULL`;
       await sql`ALTER TABLE movies ALTER COLUMN owner_login SET NOT NULL`;
-      await sql`ALTER TABLE movies DROP CONSTRAINT IF EXISTS movies_pkey`;
-      await sql`ALTER TABLE movies DROP CONSTRAINT IF EXISTS movies_owner_tmdb_pkey`;
-      await sql`ALTER TABLE movies ADD CONSTRAINT movies_owner_tmdb_pkey PRIMARY KEY (owner_login, tmdb_id)`;
+      await sql`DO $$
+        DECLARE current_primary_key TEXT;
+        BEGIN
+          LOCK TABLE movies IN ACCESS EXCLUSIVE MODE;
+          SELECT conname INTO current_primary_key
+          FROM pg_constraint
+          WHERE conrelid = 'movies'::regclass AND contype = 'p';
+          IF current_primary_key IS DISTINCT FROM 'movies_owner_tmdb_pkey' THEN
+            IF current_primary_key IS NOT NULL THEN
+              EXECUTE format('ALTER TABLE movies DROP CONSTRAINT %I', current_primary_key);
+            END IF;
+            ALTER TABLE movies ADD CONSTRAINT movies_owner_tmdb_pkey PRIMARY KEY (owner_login, tmdb_id);
+          END IF;
+        END
+      $$`;
       await sql`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', role TEXT NOT NULL DEFAULT 'member', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`;
