@@ -5,7 +5,7 @@ export function movieForm() {
   return `<details class="add-movie-panel"><summary class="button button-primary">Add a movie <span>+</span></summary><form class="movie-form" data-add-movie><div class="form-heading"><p class="eyebrow">NEW ENTRY</p><h2>Log what you are watching</h2><p class="form-hint">Search TMDB by title to fill in the film details, then add your viewing information.</p></div><div class="form-grid"><label class="form-wide">Title or series<input name="title" data-title-search required autocomplete="off" placeholder="Start typing a title..." /><div class="search-results" data-title-results></div></label><label>Status<select name="status"><option value="watching">Watching now</option><option value="watched">Watched</option><option value="wishlist">Want to watch</option><option value="upcoming">Upcoming</option></select></label><label>Where are you watching?<select name="watchingMode" data-watching-mode><option value="ott">OTT / streaming</option><option value="theatre">Theatre</option></select></label><label data-ott-field>Region<select name="watchRegion" data-watch-region><option value="IN">India</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option></select></label><label data-ott-field>OTT platform<input name="ottPlatform" data-ott-platform placeholder="Select a provider after choosing a title" /><div class="search-results" data-ott-results></div></label><input name="ottAvailability" data-ott-availability type="hidden" /><label data-theatre-field hidden>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" placeholder="Search a theatre..." /><div class="search-results" data-theatre-results></div></label><label>Your rating<input name="rating" type="number" min="1" max="10" step="1" placeholder="1–10" /></label><label>Watched date<input name="watchedDate" type="date" /></label><input name="poster" data-poster type="hidden" /><label class="form-wide">Notes<textarea name="notes" rows="3" placeholder="A quick note for future you..."></textarea></label><label class="form-wide">Tags<input name="tags" placeholder="favourite, rewatch" /></label></div><div class="form-actions"><button class="button button-primary" type="submit">Save to vault <span>↗</span></button><button class="text-link" type="reset">Clear form</button></div></form></details>`;
 }
 
-export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchlists = []) {
+export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchlists = [], approvedUsers = []) {
   const form = root.querySelector("[data-add-movie]");
   if (!form) return;
   form.querySelector("[data-watch-region]")?.closest("label")?.remove();
@@ -15,7 +15,10 @@ export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchli
   if (wishlistOption) wishlistOption.textContent = "Want to watch / Watchlist";
   const listOptions = watchlists.filter((list) => list.is_owner).map((list) => `<option value="${escapeAttr(list.id)}">${escapeHtml(list.name)}</option>`).join("");
   form.querySelector('[name="status"]')?.insertAdjacentHTML("beforebegin", `<label>Save to list<select name="listId" required>${listOptions}</select></label>`);
+  const collaborators = approvedUsers.map((username) => `<label class="watched-with-option"><input type="checkbox" name="watchedWith" value="${escapeAttr(username)}" /><span>${escapeHtml(username)}</span></label>`).join("");
+  form.querySelector('[name="status"]')?.insertAdjacentHTML("afterend", `<fieldset class="watched-with-field" data-watched-with hidden><legend>Watched with</legend><div class="watched-with-options">${collaborators || `<span class="form-hint">No other approved users yet.</span>`}</div></fieldset>`);
   const mode = form.querySelector("[data-watching-mode]");
+  const watchedWith = form.querySelector("[data-watched-with]");
   const ottField = form.querySelector("[data-ott-field]");
   const theatreField = form.querySelector("[data-theatre-field]");
   const updateLocationFields = () => {
@@ -24,13 +27,17 @@ export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchli
     theatreField.hidden = !isTheatre;
   };
   mode.addEventListener("change", updateLocationFields);
+  const updateWatchedWith = () => { watchedWith.hidden = status.value !== "watched"; };
+  status.addEventListener("change", updateWatchedWith);
+  updateWatchedWith();
   bindTitleSearch(form, tmdbClient);
   bindProviderSearch(form, tmdbClient);
   bindTheatreSearch(form, theatreClient);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const metadata = form.dataset.metadata ? JSON.parse(form.dataset.metadata) : {};
-    onSubmit(Object.fromEntries(new FormData(form)), metadata);
+    const formData = new FormData(form);
+    onSubmit({ ...Object.fromEntries(formData), watchedWith: formData.getAll("watchedWith") }, metadata);
   });
 }
 

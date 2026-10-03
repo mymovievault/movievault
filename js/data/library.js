@@ -1,3 +1,8 @@
+export function findByTmdbId(records, tmdbId) {
+  const entry = records.find((record) => String(record.tmdbId) === String(tmdbId));
+  return entry ? structuredClone(entry) : undefined;
+}
+
 export function createLibrary(records) {
   let entries = structuredClone(records);
 
@@ -6,7 +11,7 @@ export function createLibrary(records) {
       return structuredClone(entries);
     },
     find(tmdbId) {
-      return structuredClone(entries.find((entry) => entry.tmdbId === Number(tmdbId)));
+      return findByTmdbId(entries, tmdbId);
     },
     add(record) {
       const entry = { ...record, tmdbId: record.tmdbId || Date.now() };

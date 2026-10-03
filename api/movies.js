@@ -1,6 +1,7 @@
-import { addWatchlistItem, deleteMovie, listMovies, recordAudit, updateMovie, upsertMovie } from "./_lib/database.js";
+import { addWatchlistItem, areApprovedUsernames, deleteMovie, listMovies, recordAudit, updateMovie, upsertMovie } from "./_lib/database.js";
 import { readSession } from "./_lib/session.js";
 import { rateLimit } from "./_lib/rate-limit.js";
+import { validWatchedWith } from "./_lib/watched-with.js";
 
 function headers(response) {
   response.setHeader("Access-Control-Allow-Origin", process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || "*");
@@ -19,7 +20,14 @@ export default async function movies(request, response) {
     if (!session) return response.status(401).json({ error: "Create an account or sign in to view your vault." });
     if (request.method === "GET") return response.status(200).json(await listMovies(session.username));
     if (request.method === "PATCH") {
-      const updated = await updateMovie(request.body?.tmdbId, request.body?.changes || {}, session.username);
+      const changes = { ...(request.body?.changes || {}) };
+      if (Object.hasOwn(changes, "watchedWith")) {
+        if (!validWatchedWith(changes.watchedWith) || !(await areApprovedUsernames(changes.watchedWith, session.username))) {
+          return response.status(400).json({ error: "Choose only approved users for Watched with." });
+        }
+      }
+      if (changes.status && changes.status !== "watched") changes.watchedWith = [];
+      const updated = await updateMovie(request.body?.tmdbId, changes, session.username);
       if (updated) await recordAudit(session.username, "movie_updated", "movie", String(request.body?.tmdbId));
       return updated ? response.status(200).json(updated) : response.status(404).json({ error: "Movie not found." });
     }
@@ -30,7 +38,11 @@ export default async function movies(request, response) {
     }
     if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
     if (!request.body?.title || typeof request.body.title !== "string") return response.status(400).json({ error: "A movie title is required" });
-    const record = { ...request.body, tmdbId: request.body.tmdbId || Date.now() };
+    const submittedWatchedWith = request.body.watchedWith ?? [];
+    if (!validWatchedWith(submittedWatchedWith) || !(await areApprovedUsernames(submittedWatchedWith, session.username))) {
+      return response.status(400).json({ error: "Choose only approved users for Watched with." });
+    }
+    const record = { ...request.body, watchedWith: request.body.status === "watched" ? submittedWatchedWith : [], tmdbId: request.body.tmdbId || Date.now() };
     if (request.body.listId) {
       const added = await addWatchlistItem(session.username, request.body.listId, record);
       if (!added) return response.status(404).json({ error: "Watchlist not found or not owned by you." });

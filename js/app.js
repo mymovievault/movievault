@@ -1,6 +1,6 @@
 import { startRouter, registerRoute } from "./router.js";
-import { loadFlatFile, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, logout } from "./data/storage.js";
-import { createLibrary } from "./data/library.js";
+import { loadFlatFile, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, loadApprovedUsers, logout } from "./data/storage.js";
+import { createLibrary, findByTmdbId } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
 import { wishlistPage } from "./pages/wishlist.js";
@@ -28,6 +28,7 @@ async function boot() {
     }
     const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
     let watchlists = MOVIE_API_URL ? await loadWatchlists(MOVIE_API_URL) : [];
+    const approvedUsers = MOVIE_API_URL ? await loadApprovedUsers(MOVIE_API_URL) : [];
     let curatedUpcoming = [];
     try {
       curatedUpcoming = await loadUpcoming(MOVIE_API_URL);
@@ -44,7 +45,7 @@ async function boot() {
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
       else if (active === "/lists") bindLists(app, MOVIE_API_URL, (lists) => { watchlists = lists; });
       else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render, watchlists);
-      else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists);
+      else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists, approvedUsers);
     };
 
     registerRoute("/", () => render(homePage(library, watchlists), "/"));
@@ -53,7 +54,11 @@ async function boot() {
     registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming, watchlists), "/upcoming"));
     registerRoute("/admin", () => render(adminPage(), "/admin"));
     registerRoute("/lists", () => render(listsPage(library), "/lists"));
-    registerRoute("/movie", (path) => render(movieModal(library.find(path.split("/").pop())), ""));
+    registerRoute("/movie", (path) => {
+      const tmdbId = path.split("/").pop();
+      const movie = library.find(tmdbId) || findByTmdbId(watchlists.flatMap((list) => list.items || []), tmdbId);
+      render(movieModal(movie), "");
+    });
     startRouter((route, path) => route(path));
 
   } catch (error) {
@@ -79,7 +84,7 @@ function bindNavigation() {
   });
 }
 
-function bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists) {
+function bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists, approvedUsers) {
   const root = document.querySelector("main");
   if (!root) return;
   bindFilters(root);
@@ -111,6 +116,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
       ottAvailability: formData.ottAvailability,
       theatreName: formData.theatreName.trim(),
       listId: formData.listId,
+      watchedWith: formData.status === "watched" ? formData.watchedWith : [],
     });
     try {
       await saveMovie(record, MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : "");
@@ -121,7 +127,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
       library.remove(record.tmdbId);
       window.alert(error.message);
     }
-  }, tmdbClient, theatreClient, watchlists);
+  }, tmdbClient, theatreClient, watchlists, approvedUsers);
   const search = root.querySelector("[data-search]");
   if (search) search.addEventListener("input", () => {
     const query = search.value.toLowerCase();

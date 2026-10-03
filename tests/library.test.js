@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createLibrary } from "../js/data/library.js";
+import { createLibrary, findByTmdbId } from "../js/data/library.js";
 
 const records = [
   { tmdbId: 1, title: "Watched", status: "watched", runtime: 120, rating: 8 },
@@ -24,6 +24,12 @@ test("library adds and finds a record", () => {
   assert.equal(added.tmdbId, 7);
   assert.equal(library.find(7).title, "New title");
   assert.equal(library.all().length, 1);
+});
+
+test("finds watchlist-only records by numeric or string TMDB ID", () => {
+  const watchlistItems = [{ tmdbId: "1003596", title: "Wishlist title" }];
+  assert.equal(findByTmdbId(watchlistItems, 1003596).title, "Wishlist title");
+  assert.equal(findByTmdbId(watchlistItems, "missing"), undefined);
 });
 
 test("library updates a record without mutating the input", () => {

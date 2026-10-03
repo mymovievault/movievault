@@ -146,6 +146,21 @@ export async function listUsers() {
   return sql`SELECT id, username, status, role, created_at FROM users ORDER BY created_at ASC`;
 }
 
+export async function listApprovedUsernames(exceptUsername) {
+  const sql = await ready();
+  const rows = await sql`SELECT username FROM users WHERE status = 'approved' AND username <> ${exceptUsername} ORDER BY username`;
+  return rows.map((row) => row.username);
+}
+
+export async function areApprovedUsernames(usernames, exceptUsername) {
+  const sql = await ready();
+  const rows = await Promise.all(usernames.map(async (username) => {
+    const matches = await sql`SELECT 1 FROM users WHERE username = ${username} AND status = 'approved' AND username <> ${exceptUsername}`;
+    return matches.length > 0;
+  }));
+  return rows.every(Boolean);
+}
+
 export async function listWatchlists(username) {
   const sql = await ready();
   return sql`SELECT w.id, w.name, w.owner_username, w.owner_username = ${username} AS is_owner, COALESCE((SELECT json_agg(i.record ORDER BY i.created_at DESC) FROM watchlist_items i WHERE i.watchlist_id = w.id), '[]'::json) AS items, COALESCE((SELECT json_agg(s.viewer_username ORDER BY s.viewer_username) FROM watchlist_shares s WHERE s.watchlist_id = w.id), '[]'::json) AS shared_with FROM watchlists w WHERE w.owner_username = ${username} OR EXISTS (SELECT 1 FROM watchlist_shares s WHERE s.watchlist_id = w.id AND s.viewer_username = ${username}) ORDER BY w.created_at`;

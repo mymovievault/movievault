@@ -20,6 +20,13 @@ export async function getSession(apiUrl) {
   return { ...result, sessionExpired: result.sessionExpired || false };
 }
 
+export async function loadApprovedUsers(apiUrl) {
+  const response = await fetch(`${apiUrl}/api/users`, { cache: "no-store", credentials: "include" });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Could not load users.");
+  return result;
+}
+
 export async function logout(apiUrl) {
   await fetch(`${apiUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
 }
