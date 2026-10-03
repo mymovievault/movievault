@@ -10,7 +10,10 @@ export function registerRoute(path, render) {
 export function startRouter(onRoute) {
   const renderRoute = () => {
     const path = window.location.hash.slice(1) || "/";
-    if (resetRouteHistory) {
+    if (path === "/") {
+      routeHistory = [path];
+      resetRouteHistory = false;
+    } else if (resetRouteHistory) {
       routeHistory = [path];
       resetRouteHistory = false;
     } else if (currentPath === null) {

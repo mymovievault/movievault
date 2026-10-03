@@ -16,7 +16,7 @@ function createWindow(startHash) {
   };
 }
 
-test("in-app back follows route history and sends a direct deep link to overview", async () => {
+test("home clears route history and direct deep links can return to overview", async () => {
   const router = await import("../public/js/router.js?history-test");
   globalThis.window = createWindow("#/");
   router.registerRoute("/", () => {});
@@ -31,6 +31,15 @@ test("in-app back follows route history and sends a direct deep link to overview
   assert.equal(window.location.hash, "#/library");
   router.goBack();
   assert.equal(window.location.hash, "#/");
+  assert.equal(router.canGoBack(), false);
+
+  window.location.hash = "/library";
+  window.location.hash = "/movie/43";
+  window.location.hash = "/";
+  assert.equal(router.canGoBack(), false);
+  window.location.hash = "/library";
+  assert.equal(router.canGoBack(), true);
+  router.goBack();
   assert.equal(router.canGoBack(), false);
 
   const directRouter = await import("../public/js/router.js?direct-link-test");
