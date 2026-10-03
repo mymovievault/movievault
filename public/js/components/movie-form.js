@@ -8,6 +8,11 @@ export function movieForm() {
 export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchlists = [], searchApprovedUsers = async () => []) {
   const form = root.querySelector("[data-add-movie]");
   if (!form) return;
+  const watchedDateInput = form.querySelector('[name="watchedDate"]');
+  if (watchedDateInput && !watchedDateInput.value) {
+    const today = new Date();
+    watchedDateInput.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  }
   form.querySelector("[data-watch-region]")?.closest("label")?.remove();
   const status = form.querySelector('[name="status"]');
   status?.querySelector('option[value="watching"]')?.remove();
@@ -190,7 +195,7 @@ function bindTitleSearch(form, tmdbClient) {
       try {
         const matches = await tmdbClient.search(query);
         if (currentRequest !== requestId) return;
-        results.innerHTML = matches.length ? matches.slice(0, 6).map((item, index) => `<button type="button" class="search-result" data-result-index="${index}"><img src="${escapeAttr(imageUrl(item.poster_path, "w92"))}" alt="" /><span><strong>${escapeHtml(item.title || item.name)}</strong><small>${escapeHtml((item.release_date || item.first_air_date || "").slice(0, 4))} / ${item.media_type === "tv" ? "Series" : "Movie"}</small></span></button>`).join("") : `<p class="search-status">No titles found.</p>`;
+        results.innerHTML = matches.length ? matches.slice(0, 6).map((item, index) => `<button type="button" class="search-result" data-result-index="${index}">${item.poster_path ? `<img src="${escapeAttr(imageUrl(item.poster_path, "w92"))}" alt="" />` : `<span class="search-result-placeholder" aria-hidden="true">MV</span>`}<span><strong>${escapeHtml(item.title || item.name)}</strong><small>${item.media_type === "wikidata" ? `Wikidata / ${escapeHtml(item.description || "Open movie data")}` : `${escapeHtml((item.release_date || item.first_air_date || "").slice(0, 4))} / ${item.media_type === "tv" ? "Series" : "Movie"}`}</small></span></button>`).join("") : `<p class="search-status">No titles found.</p>`;
         results.querySelectorAll("[data-result-index]").forEach((button) => button.addEventListener("click", async () => {
           const details = await tmdbClient.details(matches[Number(button.dataset.resultIndex)]);
           form.dataset.metadata = JSON.stringify(details);
@@ -201,7 +206,7 @@ function bindTitleSearch(form, tmdbClient) {
         }));
       } catch {
         if (currentRequest !== requestId) return;
-        results.innerHTML = `<p class="search-status">TMDB search is unavailable. You can still enter the title manually.</p>`;
+        results.innerHTML = `<p class="search-status">Movie metadata search is unavailable. You can still enter the title manually.</p>`;
       }
     }, 300);
   });

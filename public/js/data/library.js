@@ -19,10 +19,10 @@ export function createLibrary(records) {
       return structuredClone(entry);
     },
     remove(tmdbId) {
-      entries = entries.filter((entry) => entry.tmdbId !== Number(tmdbId));
+      entries = entries.filter((entry) => String(entry.tmdbId) !== String(tmdbId));
     },
     update(tmdbId, changes) {
-      entries = entries.map((entry) => entry.tmdbId === Number(tmdbId) ? { ...entry, ...changes } : entry);
+      entries = entries.map((entry) => String(entry.tmdbId) === String(tmdbId) ? { ...entry, ...changes } : entry);
       return this.find(tmdbId);
     },
     stats() {

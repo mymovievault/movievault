@@ -38,3 +38,11 @@ test("library updates a record without mutating the input", () => {
   assert.equal(library.find(1).rating, 10);
   assert.equal(records[0].rating, 8);
 });
+
+test("library updates and removes namespaced provider IDs", () => {
+  const library = createLibrary([{ tmdbId: "wikidata:Q83495", title: "The Matrix", status: "watched" }]);
+  library.update("wikidata:Q83495", { rating: 9 });
+  assert.equal(library.find("wikidata:Q83495").rating, 9);
+  library.remove("wikidata:Q83495");
+  assert.equal(library.all().length, 0);
+});

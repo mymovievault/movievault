@@ -16,7 +16,7 @@ Each movie record combines TMDB-style metadata with personal status, rating, wat
 
 The app supports movie and series search, watched and watching shelves, wishlists, named watchlists, upcoming releases, profiles, account recovery, and admin approval of new accounts. New registrations begin as pending requests; the `abilash9007` account is promoted to admin by the database migration.
 
-TMDB credentials belong in Vercel environment variables, never in browser configuration. The API proxies live search and upcoming data. The app uses same-origin API routes on deployed domains; local static preview mode is retained for development.
+TMDB credentials belong in Vercel environment variables, never in browser configuration. TMDB is the primary title search and metadata provider; when it fails or has no matches, the API searches Wikidata as an open-data fallback. Wikidata results are marked by source, may have less complete metadata, and do not include TMDB provider availability. OMDb is not enabled because its published CC BY-NC license is not appropriate for a potentially commercial site without separate permission. The app uses same-origin API routes on deployed domains; local static preview mode is retained for development.
 
 ## Vercel setup
 

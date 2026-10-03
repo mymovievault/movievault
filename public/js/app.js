@@ -15,6 +15,8 @@ import { authPage, bindAuth } from "./components/auth.js";
 import { adminPage, bindAdmin } from "./components/admin.js";
 import { listsPage, bindLists } from "./pages/lists.js";
 import { profilePage, bindProfile } from "./pages/profile.js";
+import { genreMovies, genrePage } from "./pages/genre.js";
+import { personPage } from "./pages/person.js";
 import { escapeHtml } from "./utils/escape.js";
 
 const app = document.querySelector("#app");
@@ -56,6 +58,21 @@ async function boot() {
     registerRoute("/admin", () => render(adminPage(), "/admin"));
     registerRoute("/lists", () => render(listsPage(library), "/lists"));
     registerRoute("/profile", () => render(profilePage(session), "/profile"));
+    registerRoute("/genre", (path) => {
+      let genre = "";
+      try { genre = decodeURIComponent(path.slice("/genre/".length)); } catch { return render(genrePage("Genre", []), ""); }
+      render(genrePage(genre, genreMovies(genre, library.all(), watchlists)), "");
+    });
+    registerRoute("/person", (path) => {
+      const [, , source, encodedId] = path.split("/");
+      let id = "";
+      try { id = decodeURIComponent(encodedId || ""); } catch { return render(personPage(null, "This person profile is unavailable."), ""); }
+      if (!tmdbClient || !id || !["tmdb", "wikidata"].includes(source)) return render(personPage(null, "This person profile is unavailable."), "");
+      render(personPage(null), "");
+      tmdbClient.person(id, source === "wikidata" ? "Wikidata" : "TMDB")
+        .then((person) => { if (window.location.hash.slice(1) === path) render(personPage(person), ""); })
+        .catch(() => { if (window.location.hash.slice(1) === path) render(personPage(null, "Person details are unavailable right now."), ""); });
+    });
     registerRoute("/movie", (path) => {
       const tmdbId = path.split("/").pop();
       const movie = library.find(tmdbId)
@@ -145,7 +162,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
 function bindLibraryActions(root, library, render, active) {
   const status = root.querySelector("[data-mutation-status]");
   root.querySelectorAll("[data-movie-action]").forEach((button) => button.addEventListener("click", async () => {
-    const tmdbId = Number(button.dataset.movieId);
+    const tmdbId = button.dataset.movieId;
     button.disabled = true;
     if (status) status.textContent = "Saving...";
     try {
