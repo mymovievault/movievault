@@ -1,4 +1,4 @@
-import { addWatchlistItem, createWatchlist, deleteWatchlist, deleteWatchlistItem, listWatchlistItems, listWatchlists, recordAudit, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "./_lib/database.js";
+import { addWatchlistItem, createWatchlist, deleteWatchlist, deleteWatchlistItem, listApprovedUsernames, listWatchlistItems, listWatchlists, recordAudit, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "./_lib/database.js";
 import { readSession } from "./_lib/session.js";
 import { setCors } from "./_lib/cors.js";
 import { rateLimit } from "./_lib/rate-limit.js";
@@ -12,6 +12,10 @@ export default async function lists(request, response) {
     const session = await readSession(request);
     if (!session) return response.status(401).json({ error: "Sign in to manage watchlists." });
     if (request.method === "GET") {
+      if (request.query?.action === "approved-users") {
+        response.setHeader("Cache-Control", "no-store");
+        return response.status(200).json(await listApprovedUsernames(session.username));
+      }
       if (request.query?.listId) return response.status(200).json(await listWatchlistItems(session.username, request.query.listId));
       return response.status(200).json(await listWatchlists(session.username));
     }

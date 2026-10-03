@@ -21,7 +21,7 @@ export async function getSession(apiUrl) {
 }
 
 export async function loadApprovedUsers(apiUrl) {
-  const response = await fetch(`${apiUrl}/api/users`, { cache: "no-store", credentials: "include" });
+  const response = await fetch(`${apiUrl}/api/lists?action=approved-users`, { cache: "no-store", credentials: "include" });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Could not load users.");
   return result;
