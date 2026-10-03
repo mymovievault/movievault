@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { escapeHtml } from "../js/utils/escape.js";
+import { escapeHtml } from "../public/js/utils/escape.js";
 import { validWatchedWith } from "../api/_lib/watched-with.js";
 import { validateProfile } from "../api/_lib/profile.js";
 

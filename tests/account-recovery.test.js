@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { hashPassword, verifyPassword } from "../api/_lib/passwords.js";
 import recover from "../api/_lib/routes/auth/recover.js";
 import requests from "../api/admin/requests.js";
-import { authPage } from "../js/components/auth.js";
+import { authPage } from "../public/js/components/auth.js";
 
 function responseDouble() {
   return {

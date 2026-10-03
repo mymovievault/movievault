@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createLibrary } from "../js/data/library.js";
+import { createLibrary } from "../public/js/data/library.js";
 
 test("library records remain isolated by the repository instance", () => {
   const firstUser = createLibrary([{ tmdbId: 1, title: "Private one", status: "watched" }]);

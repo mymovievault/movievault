@@ -36,5 +36,5 @@ const records = upcoming.results
     curatedNote: "Refreshed daily from TMDB upcoming releases for India.",
   }));
 
-await fs.writeFile("data/upcoming.json", `${JSON.stringify(records, null, 2)}\n`);
+await fs.writeFile("public/data/upcoming.json", `${JSON.stringify(records, null, 2)}\n`);
 console.log(`Refreshed ${records.length} upcoming titles.`);

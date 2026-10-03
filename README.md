@@ -1,26 +1,33 @@
 # Movie Vault
 
-A framework-free personal film archive designed for GitHub Pages.
+A personal film archive served by Vercel, with a static frontend, Vercel Functions API, and Neon/Postgres storage.
 
-## Data model
+## Repository layout
 
-The app uses Neon/Postgres as its live data store through the Vercel API. `data/movies.json` remains a seed backup for development and migration. Each record keeps TMDB-style metadata beside personal information such as status, rating, date, notes, and tags. The repository interface in `js/data/library.js` keeps the UI independent from the storage mechanism.
+- `public/`: browser-served HTML, CSS, JavaScript, images, and local fallback data
+- `api/`: Vercel Functions and server-side API helpers
+- `tests/`, `scripts/`, and `docs/`: project checks, maintenance tasks, and operating guidance
 
-The add form can search TMDB for movies and series. To enable it on GitHub Pages, add a repository Actions secret named `TMDB_READ_TOKEN` under **Settings > Secrets and variables > Actions**, containing your TMDB API Read Access Token. The Pages workflow injects it into `js/config.js` during deployment. This token is visible in a GitHub Pages site, so use a restricted read-only token and never use a server credential with write permissions. Without a token, manual entry remains available.
+Vercel serves only `public/` as static content. API functions stay outside that directory and are not exposed as downloadable source files.
 
-GitHub Pages is the frontend only. The Vercel API stores users, sessions, and movies in Postgres. Each movie belongs to the signed-in username, so accounts see only their own lists. Saves are immediate and do not require GitHub access. Until `MOVIE_API_URL` is configured, the local static build remains a read-only preview.
+## Data and features
 
-New account registrations start as pending requests. The `abilash9007` account is promoted to admin by the database migration and can approve or reject requests from the **Admin** page. Approved users can then sign in and manage their own library. Sharing can later be added on top of the existing owner-scoped records.
+Each movie record combines TMDB-style metadata with personal status, rating, watched date, notes, and tags. `public/data/movies.json` is a local preview and seed backup. Live accounts, sessions, movies, and watchlists are stored in Neon/Postgres through the API. Each movie belongs to its signed-in username.
 
-## Vercel backend
+The app supports movie and series search, watched and watching shelves, wishlists, named watchlists, upcoming releases, profiles, account recovery, and admin approval of new accounts. New registrations begin as pending requests; the `abilash9007` account is promoted to admin by the database migration.
 
-Connect this repository to Vercel, add a Neon/Postgres storage integration, and configure these environment variables:
+TMDB credentials belong in Vercel environment variables, never in browser configuration. The API proxies live search and upcoming data. The app uses same-origin API routes on deployed domains; local static preview mode is retained for development.
 
-All API paths dispatch through one Vercel function. Add handlers under `api/_lib/routes/` and register them in `api/[...route].js` rather than adding endpoint files directly under `api/`.
+## Vercel setup
 
-- `POSTGRES_URL`: created by the Neon/Postgres integration
-- `SESSION_SECRET`: a long random value used for session cookies
-- `FRONTEND_ORIGIN`: your GitHub Pages origin without the path, for example `https://mymovievault.github.io`
+Connect this repository to Vercel and add a Neon/Postgres integration. Configure these environment variables:
+
+- `POSTGRES_URL`: supplied by the Neon integration
+- `SESSION_SECRET`: a long random value used to sign session-related data
+- `TMDB_READ_TOKEN`: restricted TMDB API Read Access Token for server-side requests
+- `FRONTEND_ORIGIN`: production site origin, such as `https://movies.example.com`
+
+The Vercel build runs `npm run check` and serves `public/`; functions are deployed from `api/`. Configure the production custom domain in Vercel. Preview deployments use their own deployment origin and API.
 
 Seed a new database from the repository backup with:
 
@@ -30,35 +37,34 @@ set -a; . .env.local; set +a
 node scripts/seed-database.mjs
 ```
 
-The seeded records use `abilash9007` as their owner. Create that username first to see the existing library; other usernames start with their own empty lists.
+The seeded records use `abilash9007` as their owner. Create that username first to see the existing library; other accounts start with their own lists.
 
-The Upcoming page loads current TMDB data through the Vercel API at runtime. It checks Tamil, Telugu, Malayalam, Kannada, Hindi, and English upcoming movies for India, plus a separate Most talked about trending section. It does not commit release changes to GitHub. `data/upcoming.json` remains only as a local static fallback; configure `TMDB_READ_TOKEN` in Vercel for the live feed.
+The Upcoming page loads current TMDB data through the API. It checks Tamil, Telugu, Malayalam, Kannada, Hindi, and English upcoming movies for India, plus a separate trending section. `public/data/upcoming.json` is a local static fallback; live refreshes use `TMDB_READ_TOKEN` on Vercel.
 
-Then set `MOVIE_API_URL` to the Vercel URL and redeploy the Pages site.
+## Local development
 
-## Run locally
-
-Because browsers block `fetch()` from `file://` pages, serve the folder with any static server:
+For the frontend's read-only local preview, serve the public directory:
 
 ```sh
+cd public
 python3 -m http.server 8000
 ```
 
-Then open `http://localhost:8000`.
+Open `http://localhost:8000`. Browser API calls and account mutations require a deployed Vercel environment; do not use `file://` because browsers block local fetches.
 
-## Quality checks
+## Checks and operations
 
-Install dependencies and run the full local gate with:
+Install dependencies and run the project checks:
 
 ```sh
-npm install
+npm ci
 npm run check
 ```
 
-This runs ESLint, the Node test suite for the library data layer, JavaScript syntax checks, and static asset/JSON validation. GitHub Pages runs the same gate before deploying.
+Vercel runs the same check before building. Run public deployment smoke checks with:
 
-## Deploy
+```sh
+SMOKE_URL=https://movies.example.com node scripts/smoke.mjs
+```
 
-Push the repository to GitHub, enable GitHub Actions as the Pages source, and set the repository Pages source to **GitHub Actions**. `.github/workflows/pages.yml` deploys the root folder on pushes to `main`.
-
-`.github/workflows/cleanup-vercel.yml` also runs on every `main` push and manually, removing only Vercel deployments in the `ERROR` state. It preserves all Ready deployments and the production alias. Add a repository secret named `VERCEL_TOKEN` scoped to the `moviebuff` team for this workflow.
+See [docs/operations.md](docs/operations.md) for database backup, restore, and production recovery guidance. `.github/workflows/cleanup-vercel.yml` removes only failed Vercel deployments; it requires the `VERCEL_TOKEN` repository secret scoped to the `moviebuff` team.

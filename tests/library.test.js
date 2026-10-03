@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createLibrary, findByTmdbId } from "../js/data/library.js";
+import { createLibrary, findByTmdbId } from "../public/js/data/library.js";
 
 const records = [
   { tmdbId: 1, title: "Watched", status: "watched", runtime: 120, rating: 8 },
