@@ -4,8 +4,10 @@ export function upcomingPage(entries, watchlists = []) {
 	 const order = ["Most talked about", "Tamil", "Telugu", "Malayalam", "Kannada", "Hindi", "English"];
 	 const groups = new Map(order.map((label) => [label, []]));
 	 entries.forEach((entry) => {
-		 const label = entry.category === "Most talked about" ? entry.category : entry.languageLabel;
-		 if (groups.has(label)) groups.get(label).push(entry);
+		 const category = entry.category || "English";
+		 const languageLabel = entry.languageLabel || category;
+		 const label = category === "Most talked about" ? category : languageLabel;
+		 if (groups.has(label)) groups.get(label).push({ ...entry, category, languageLabel });
 	 });
 	 const available = order.filter((label) => groups.get(label).length);
 	 const sections = available.map((label) => `<section class="upcoming-section" data-upcoming-section="${label}"><div class="section-heading"><div><p class="eyebrow">${label === "Most talked about" ? "TRENDING NOW" : "LANGUAGE"}</p><h2>${label}</h2></div><span class="section-count">${groups.get(label).length} titles</span></div><div class="movie-grid movie-grid-large">${groups.get(label).map((entry) => upcomingCard(entry, watchlists)).join("")}</div></section>`).join("");

@@ -33,6 +33,8 @@ const records = upcoming.results
     releaseDate: movie.release_date,
     platform: null,
     region: "IN",
+    category: "English",
+    languageLabel: "English",
     curatedNote: "Refreshed daily from TMDB upcoming releases for India.",
   }));
 
