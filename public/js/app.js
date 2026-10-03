@@ -58,7 +58,9 @@ async function boot() {
     registerRoute("/profile", () => render(profilePage(session), "/profile"));
     registerRoute("/movie", (path) => {
       const tmdbId = path.split("/").pop();
-      const movie = library.find(tmdbId) || findByTmdbId(watchlists.flatMap((list) => list.items || []), tmdbId);
+      const movie = library.find(tmdbId)
+        || findByTmdbId(watchlists.flatMap((list) => list.items || []), tmdbId)
+        || findByTmdbId(curatedUpcoming, tmdbId);
       render(movieModal(movie), "");
     });
     startRouter((route, path) => route(path));
