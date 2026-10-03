@@ -34,6 +34,9 @@ export default async function upcoming(request, response) {
 function mapMovie(movie, genres, category, languageLabel) {
   return {
     tmdbId: movie.id,
+    mediaType: "movie",
+    metadataSource: "TMDB",
+    externalIds: { tmdb: String(movie.id) },
     title: movie.title,
     year: Number((movie.release_date || "").slice(0, 4)) || null,
     poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "",

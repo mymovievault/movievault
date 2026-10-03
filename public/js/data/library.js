@@ -15,7 +15,8 @@ export function createLibrary(records) {
     },
     add(record) {
       const entry = { ...record, tmdbId: record.tmdbId || Date.now() };
-      entries = [entry, ...entries];
+      const existingIndex = entries.findIndex((item) => String(item.tmdbId) === String(entry.tmdbId));
+      entries = existingIndex < 0 ? [entry, ...entries] : entries.map((item, index) => index === existingIndex ? entry : item);
       return structuredClone(entry);
     },
     remove(tmdbId) {

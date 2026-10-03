@@ -33,11 +33,13 @@ export function createTmdbClient({ token, apiUrl } = {}) {
         if (!response.ok) throw new Error("Wikidata details request failed");
         return response.json();
       }
-      const data = await request(`/${item.media_type}/${item.id}?append_to_response=credits&language=en-US`);
+      const data = await request(`/${item.media_type}/${item.id}?append_to_response=credits,external_ids&language=en-US`);
       const director = data.credits?.crew?.find((person) => person.job === "Director");
       return {
         tmdbId: data.id,
         mediaType: item.media_type,
+        metadataSource: "TMDB",
+        externalIds: { tmdb: String(data.id), imdb: data.external_ids?.imdb_id || "" },
         title: data.title || data.name,
         year: Number((data.release_date || data.first_air_date || "").slice(0, 4)) || null,
         releaseDate: data.release_date || data.first_air_date || null,

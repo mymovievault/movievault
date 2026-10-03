@@ -124,6 +124,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
   bindMovieForm(root, async (formData, metadata) => {
     const record = library.add({
       ...metadata,
+      metadataSource: metadata.metadataSource || "manual",
       title: formData.title.trim(),
       year: metadata.year || null,
       poster: formData.poster.trim(),
@@ -142,7 +143,9 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
       watchedWith: formData.status === "watched" ? formData.watchedWith : [],
     });
     try {
-      await saveMovie(record, MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : "");
+      const saved = await saveMovie(record, MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : "");
+      library.remove(record.tmdbId);
+      library.add(saved || record);
       const shelf = formData.status === "wishlist" ? "/wishlist" : formData.status === "upcoming" ? "/upcoming" : "/library";
       const page = shelf === "/wishlist" ? wishlistPage(library, "wishlist", "Wishlist") : shelf === "/upcoming" ? upcomingPage(library, "upcoming", "Upcoming") : libraryPage(library, ["watched", "watching"], "Watched & Watching");
       render(page, shelf);
@@ -212,7 +215,7 @@ function bindUpcoming(root, entries, library, render, watchlists) {
     if (!source) return;
     const listId = button.closest(".movie-card")?.querySelector("[data-upcoming-list]")?.value;
     if (!listId) return window.alert("Create a watchlist before adding this title.");
-    const record = { ...source, status: "wishlist", tags: [...(source.tags || []), "curated upcoming"], notes: source.curatedNote || "" };
+    const record = { ...source, mediaType: source.mediaType || "movie", metadataSource: source.metadataSource || "TMDB", externalIds: source.externalIds || { tmdb: String(source.tmdbId) }, status: "wishlist", tags: [...(source.tags || []), "curated upcoming"], notes: source.curatedNote || "" };
     button.disabled = true;
     try {
       const response = await fetch(`${MOVIE_API_URL}/api/lists`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "add-item", listId, record }) });

@@ -20,6 +20,9 @@ const records = upcoming.results
   .slice(0, 18)
   .map((movie) => ({
     tmdbId: movie.id,
+    mediaType: "movie",
+    metadataSource: "TMDB",
+    externalIds: { tmdb: String(movie.id) },
     title: movie.title,
     year: Number(movie.release_date.slice(0, 4)),
     poster: `https://image.tmdb.org/t/p/w500${movie.poster_path}`,

@@ -57,6 +57,7 @@ export function normalizeEntity(entity, labels) {
     wikidataId: entity.id,
     mediaType: /series|television|tv/i.test(description) ? "tv" : "movie",
     metadataSource: "Wikidata",
+    externalIds: { wikidata: entity.id, tmdb: claimValue(entity, "P4947") || claimValue(entity, "P4983") || "", imdb: claimValue(entity, "P345") || "" },
     title: entity.labels?.en?.value || entity.id,
     year: Number(releaseDate.slice(0, 4)) || null,
     releaseDate: releaseDate || null,

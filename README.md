@@ -12,7 +12,7 @@ Vercel serves only `public/` as static content. API functions stay outside that 
 
 ## Data and features
 
-Each movie record combines TMDB-style metadata with personal status, rating, watched date, notes, and tags. `public/data/movies.json` is a local preview and seed backup. Live accounts, sessions, movies, and watchlists are stored in Neon/Postgres through the API. Each movie belongs to its signed-in username.
+MovieVault stores shared title metadata once in a provider-aliased catalog, with cast/director people and title credits stored separately. Each user's status, rating, watched date, notes, tags, and watchlist membership stay in owner-scoped rows. TMDB, Wikidata, and IMDb aliases are used to resolve the same title to one catalog identity when providers expose a shared ID. `public/data/movies.json` remains a local preview and seed backup; live account data is stored in Neon/Postgres through the API.
 
 The app supports movie and series search, watched and watching shelves, wishlists, named watchlists, upcoming releases, profiles, account recovery, and admin approval of new accounts. New registrations begin as pending requests; the `abilash9007` account is promoted to admin by the database migration.
 

@@ -26,6 +26,13 @@ test("library adds and finds a record", () => {
   assert.equal(library.all().length, 1);
 });
 
+test("library add replaces a record with the same canonical media ID", () => {
+  const library = createLibrary([{ tmdbId: "imdb:tt42", title: "Example", status: "watched" }]);
+  library.add({ tmdbId: "imdb:tt42", title: "Example", status: "wishlist" });
+  assert.equal(library.all().length, 1);
+  assert.equal(library.find("imdb:tt42").status, "wishlist");
+});
+
 test("finds watchlist-only records by numeric or string TMDB ID", () => {
   const watchlistItems = [{ tmdbId: "1003596", title: "Wishlist title" }];
   assert.equal(findByTmdbId(watchlistItems, 1003596).title, "Wishlist title");
