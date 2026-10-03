@@ -197,6 +197,136 @@ async function ready() {
         FROM media_catalog c`;
       await sql`INSERT INTO watchlists (id, owner_username, name) SELECT md5(username || ':main'), username, 'My Library' FROM users ON CONFLICT (owner_username, name) DO NOTHING`;
       await sql`INSERT INTO watchlist_items (watchlist_id, tmdb_id, catalog_id, record) SELECT md5(m.owner_login || ':main'), m.catalog_id, m.catalog_id, m.record FROM movies m ON CONFLICT DO NOTHING`;
+      await sql`DO $$
+        BEGIN
+          CREATE TEMP TABLE catalog_alias_candidates ON COMMIT DROP AS
+            SELECT media_id, provider,
+              CASE WHEN provider LIKE 'tmdb:%' THEN regexp_replace(external_id, '^tmdb:(movie|tv):', '')
+                   WHEN provider = 'imdb' THEN lower(external_id)
+                   ELSE external_id END AS external_id
+            FROM media_aliases
+            WHERE NULLIF(external_id, '') IS NOT NULL
+            UNION
+            SELECT media_id,
+              'tmdb:' || CASE WHEN record->>'mediaType' = 'tv' THEN 'tv' ELSE 'movie' END,
+              regexp_replace(COALESCE(NULLIF(record #>> '{externalIds,tmdb}', ''), record->>'tmdbId', ''), '^tmdb:(movie|tv):', '')
+            FROM media_catalog
+            WHERE NULLIF(COALESCE(record #>> '{externalIds,tmdb}', record->>'tmdbId', ''), '') IS NOT NULL
+              AND record->>'metadataSource' IS DISTINCT FROM 'manual'
+            UNION
+            SELECT media_id, 'imdb', lower(record #>> '{externalIds,imdb}')
+            FROM media_catalog
+            WHERE NULLIF(record #>> '{externalIds,imdb}', '') IS NOT NULL
+            UNION
+            SELECT media_id, 'wikidata', COALESCE(NULLIF(record->>'wikidataId', ''), NULLIF(record #>> '{externalIds,wikidata}', ''), regexp_replace(media_id, '^wikidata:', ''))
+            FROM media_catalog
+            WHERE record->>'metadataSource' = 'Wikidata' OR record ? 'wikidataId'
+            UNION
+            SELECT media_id, 'manual', regexp_replace(media_id, '^manual:', '')
+            FROM media_catalog
+            WHERE record->>'metadataSource' = 'manual';
+
+          CREATE TEMP TABLE catalog_canonical_map ON COMMIT DROP AS
+            WITH alias_winners AS (
+              SELECT provider, external_id,
+                (array_agg(media_id ORDER BY CASE WHEN media_id LIKE 'imdb:%' THEN 0 WHEN media_id LIKE 'tmdb:%' THEN 1 WHEN media_id LIKE 'wikidata:%' THEN 2 ELSE 3 END, media_id))[1] AS canonical_id
+              FROM catalog_alias_candidates
+              WHERE NULLIF(external_id, '') IS NOT NULL
+              GROUP BY provider, external_id
+            ), candidates AS (
+              SELECT DISTINCT aliases.media_id, winners.canonical_id
+              FROM catalog_alias_candidates aliases
+              JOIN alias_winners winners USING (provider, external_id)
+            ), resolved AS (
+              SELECT media_id,
+                (array_agg(canonical_id ORDER BY CASE WHEN canonical_id LIKE 'imdb:%' THEN 0 WHEN canonical_id LIKE 'tmdb:%' THEN 1 WHEN canonical_id LIKE 'wikidata:%' THEN 2 ELSE 3 END, canonical_id))[1] AS canonical_id
+              FROM candidates
+              GROUP BY media_id
+            )
+            SELECT catalog.media_id, COALESCE(resolved.canonical_id, catalog.media_id) AS canonical_id
+            FROM media_catalog catalog
+            LEFT JOIN resolved ON resolved.media_id = catalog.media_id;
+
+          CREATE TEMP TABLE normalized_catalog_aliases ON COMMIT DROP AS
+            SELECT DISTINCT aliases.provider, aliases.external_id, mapping.canonical_id AS media_id
+            FROM catalog_alias_candidates aliases
+            JOIN catalog_canonical_map mapping ON mapping.media_id = aliases.media_id
+            WHERE NULLIF(aliases.external_id, '') IS NOT NULL;
+
+          CREATE TEMP TABLE merged_catalog_records ON COMMIT DROP AS
+            WITH mapped AS (
+              SELECT mapping.canonical_id, catalog.media_id, catalog.record, catalog.created_at, catalog.updated_at
+              FROM media_catalog catalog
+              JOIN catalog_canonical_map mapping ON mapping.media_id = catalog.media_id
+            ), preferred AS (
+              SELECT DISTINCT ON (canonical_id) canonical_id, record, created_at, updated_at
+              FROM mapped
+              ORDER BY canonical_id,
+                CASE WHEN record->>'metadataSource' = 'TMDB' THEN 0 WHEN record->>'metadataSource' = 'Wikidata' THEN 1 ELSE 2 END,
+                CASE WHEN NULLIF(record->>'poster', '') IS NULL THEN 1 ELSE 0 END,
+                updated_at DESC, media_id
+            ), identifiers AS (
+              SELECT media_id AS canonical_id,
+                MIN(external_id) FILTER (WHERE provider = 'imdb') AS imdb_id,
+                MIN(external_id) FILTER (WHERE provider LIKE 'tmdb:%') AS tmdb_id,
+                MIN(external_id) FILTER (WHERE provider = 'wikidata') AS wikidata_id
+              FROM normalized_catalog_aliases
+              GROUP BY media_id
+            )
+            SELECT preferred.canonical_id AS media_id,
+              preferred.record || jsonb_build_object(
+                'canonicalId', preferred.canonical_id,
+                'externalIds', COALESCE(preferred.record->'externalIds', '{}'::jsonb) || jsonb_strip_nulls(jsonb_build_object('imdb', identifiers.imdb_id, 'tmdb', identifiers.tmdb_id, 'wikidata', identifiers.wikidata_id))
+              ) AS record,
+              preferred.created_at,
+              preferred.updated_at
+            FROM preferred
+            LEFT JOIN identifiers USING (canonical_id);
+
+          CREATE TEMP TABLE merged_movie_rows ON COMMIT DROP AS
+            SELECT movie.owner_login, mapping.canonical_id AS catalog_id, MAX(movie.created_at) AS created_at,
+              jsonb_object_agg(entry.key, entry.value ORDER BY movie.created_at, movie.tmdb_id) || jsonb_build_object('tmdbId', mapping.canonical_id) AS record
+            FROM movies movie
+            JOIN catalog_canonical_map mapping ON mapping.media_id = movie.catalog_id
+            CROSS JOIN LATERAL jsonb_each(movie.record) AS entry(key, value)
+            GROUP BY movie.owner_login, mapping.canonical_id;
+
+          CREATE TEMP TABLE merged_watchlist_rows ON COMMIT DROP AS
+            SELECT item.watchlist_id, mapping.canonical_id AS catalog_id, MAX(item.created_at) AS created_at,
+              jsonb_object_agg(entry.key, entry.value ORDER BY item.created_at, item.tmdb_id) || jsonb_build_object('tmdbId', mapping.canonical_id) AS record
+            FROM watchlist_items item
+            JOIN catalog_canonical_map mapping ON mapping.media_id = item.catalog_id
+            CROSS JOIN LATERAL jsonb_each(item.record) AS entry(key, value)
+            GROUP BY item.watchlist_id, mapping.canonical_id;
+
+          INSERT INTO media_credits (media_id, person_id, role, character, credit_order)
+            SELECT mapping.canonical_id, credit.person_id, credit.role, credit.character, MIN(credit.credit_order)
+            FROM media_credits credit
+            JOIN catalog_canonical_map mapping ON mapping.media_id = credit.media_id
+            GROUP BY mapping.canonical_id, credit.person_id, credit.role, credit.character
+            ON CONFLICT (media_id, person_id, role, character) DO UPDATE SET credit_order = LEAST(media_credits.credit_order, EXCLUDED.credit_order);
+          DELETE FROM media_credits credit USING catalog_canonical_map mapping
+            WHERE credit.media_id = mapping.media_id AND mapping.media_id <> mapping.canonical_id;
+
+          DELETE FROM movies;
+          INSERT INTO movies (tmdb_id, owner_login, record, created_at, catalog_id)
+            SELECT catalog_id, owner_login, record, created_at, catalog_id FROM merged_movie_rows;
+          DELETE FROM watchlist_items;
+          INSERT INTO watchlist_items (watchlist_id, tmdb_id, catalog_id, record, created_at)
+            SELECT watchlist_id, catalog_id, catalog_id, record, created_at FROM merged_watchlist_rows;
+
+          UPDATE media_catalog catalog
+            SET record = merged.record, created_at = merged.created_at, updated_at = merged.updated_at
+            FROM merged_catalog_records merged
+            WHERE catalog.media_id = merged.media_id;
+          DELETE FROM media_aliases;
+          DELETE FROM media_catalog catalog USING catalog_canonical_map mapping
+            WHERE catalog.media_id = mapping.media_id AND mapping.media_id <> mapping.canonical_id;
+          INSERT INTO media_aliases (provider, external_id, media_id)
+            SELECT provider, external_id, media_id FROM normalized_catalog_aliases
+            ON CONFLICT (provider, external_id) DO UPDATE SET media_id = EXCLUDED.media_id;
+        END
+      $$`;
     })();
   }
   await schemaPromise;

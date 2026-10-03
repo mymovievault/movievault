@@ -11,6 +11,13 @@ test("TMDB and Wikidata records resolve to a shared IMDb identity", () => {
   assert.ok(mediaAliases(wikidata).some((alias) => alias.provider === "tmdb:movie" && alias.externalId === "42"));
 });
 
+test("legacy prefixed TMDB IDs alias with current numeric TMDB IDs", () => {
+  const current = { tmdbId: 950028, mediaType: "movie", metadataSource: "TMDB", externalIds: { tmdb: "950028" } };
+  const legacy = { tmdbId: "tmdb:movie:950028", mediaType: "movie", externalIds: { tmdb: "tmdb:movie:950028" } };
+  assert.deepEqual(mediaAliases(legacy), mediaAliases(current));
+  assert.equal(canonicalMediaId(legacy), "tmdb:movie:950028");
+});
+
 test("shared metadata and owner-specific fields split and recombine", () => {
   const { catalog, user } = splitMediaRecord({ tmdbId: 42, title: "Example", cast: [{ name: "Actor" }], status: "watched", rating: 9, notes: "Personal note" }, "imdb:tt0042");
   assert.equal(catalog.title, "Example");

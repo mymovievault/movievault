@@ -13,19 +13,23 @@ const USER_FIELDS = new Set([
   "curatedNote",
 ]);
 
+function normalizeTmdbId(value) {
+  return String(value || "").replace(/^tmdb:(movie|tv):/, "");
+}
+
 export function mediaAliases(record) {
   const aliases = [];
   const source = String(record.metadataSource || "").toLowerCase();
   if (source === "wikidata" || record.wikidataId) {
     const id = record.wikidataId || String(record.tmdbId || "").replace(/^wikidata:/, "");
     if (id) aliases.push({ provider: "wikidata", externalId: id });
-    if (record.externalIds?.tmdb) aliases.push({ provider: `tmdb:${record.mediaType === "tv" ? "tv" : "movie"}`, externalId: String(record.externalIds.tmdb) });
+    if (record.externalIds?.tmdb) aliases.push({ provider: `tmdb:${record.mediaType === "tv" ? "tv" : "movie"}`, externalId: normalizeTmdbId(record.externalIds.tmdb) });
   } else if (source === "manual") {
     if (record.tmdbId) aliases.push({ provider: "manual", externalId: String(record.tmdbId) });
   } else if (record.tmdbId) {
     const mediaType = record.mediaType === "tv" ? "tv" : "movie";
-    const id = record.externalIds?.tmdb || record.tmdbId;
-    aliases.push({ provider: `tmdb:${mediaType}`, externalId: String(id) });
+    const id = normalizeTmdbId(record.externalIds?.tmdb || record.tmdbId);
+    aliases.push({ provider: `tmdb:${mediaType}`, externalId: id });
   }
   const imdbId = record.externalIds?.imdb;
   if (imdbId) aliases.push({ provider: "imdb", externalId: String(imdbId).toLowerCase() });
@@ -41,7 +45,7 @@ export function canonicalMediaId(record) {
     return `wikidata:${record.wikidataId || String(record.tmdbId || "").replace(/^wikidata:/, "")}`;
   }
   if (source === "manual") return `manual:${record.tmdbId || Date.now()}`;
-  return `tmdb:${record.mediaType === "tv" ? "tv" : "movie"}:${record.externalIds?.tmdb || record.tmdbId || Date.now()}`;
+  return `tmdb:${record.mediaType === "tv" ? "tv" : "movie"}:${normalizeTmdbId(record.externalIds?.tmdb || record.tmdbId || Date.now())}`;
 }
 
 export function splitMediaRecord(record, mediaId) {
