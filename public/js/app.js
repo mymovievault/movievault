@@ -1,4 +1,4 @@
-import { startRouter, registerRoute } from "./router.js";
+import { startRouter, registerRoute, canGoBack, goBack } from "./router.js";
 import { loadFlatFile, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, loadApprovedUsers, logout } from "./data/storage.js";
 import { createLibrary, findByTmdbId } from "./data/library.js";
 import { homePage } from "./pages/home.js";
@@ -71,7 +71,8 @@ async function boot() {
 function shell(content, active, library, session) {
   const stats = library.stats();
   const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><details class="account-menu"><summary class="account-trigger"><span class="account-avatar" aria-hidden="true">${escapeHtml(session.login.slice(0, 1).toUpperCase())}</span><span class="account-name">${escapeHtml(session.login)}</span><span aria-hidden="true">⌄</span></summary><div class="account-menu-panel"><a class="account-menu-item" href="#/profile" data-route="/profile">Profile &amp; settings</a><button class="account-menu-item" data-logout>Sign out</button></div></details></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  const backButton = canGoBack() ? `<button type="button" class="back-button" data-back aria-label="Go back" title="Go back"><span aria-hidden="true">&larr;</span></button>` : "";
+  return `<header class="topbar"><div class="brand-group">${backButton}<a class="brand" href="#/">MOVIE <span>VAULT</span></a></div><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><details class="account-menu"><summary class="account-trigger"><span class="account-avatar" aria-hidden="true">${escapeHtml(session.login.slice(0, 1).toUpperCase())}</span><span class="account-name">${escapeHtml(session.login)}</span><span aria-hidden="true">⌄</span></summary><div class="account-menu-panel"><a class="account-menu-item" href="#/profile" data-route="/profile">Profile &amp; settings</a><button class="account-menu-item" data-logout>Sign out</button></div></details></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {
@@ -79,6 +80,7 @@ function navItem(route, label, active) {
 }
 
 function bindNavigation() {
+  document.querySelector("[data-back]")?.addEventListener("click", goBack);
   document.querySelectorAll("[data-route]").forEach((link) => link.addEventListener("click", () => { window.location.hash = link.dataset.route; }));
   document.querySelector("[data-logout]")?.addEventListener("click", async () => {
     await logout(MOVIE_API_URL);

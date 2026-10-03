@@ -1,6 +1,9 @@
 body { background: radial-gradient(circle at 76% 3%, #2c342d 0, transparent 25rem), #101211; }
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .topbar { width: min(1200px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0; display: flex; align-items: center; gap: 44px; }
+.brand-group { display: flex; min-width: 0; align-items: center; gap: 14px; }
+.back-button { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; padding: 0; color: #828781; background: transparent; border: 0; font-size: 20px; cursor: pointer; transition: color .2s ease, background-color .2s ease; }
+.back-button:hover, .back-button:focus-visible { color: #e9e5dc; background: #262b27; }
 .brand { font-size: 15px; font-weight: 800; letter-spacing: .12em; white-space: nowrap; }
 .brand span { color: #d8a35d; }
 nav { display: flex; gap: 25px; flex: 1; }
