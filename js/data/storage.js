@@ -20,8 +20,9 @@ export async function getSession(apiUrl) {
   return { ...result, sessionExpired: result.sessionExpired || false };
 }
 
-export async function loadApprovedUsers(apiUrl) {
-  const response = await fetch(`${apiUrl}/api/lists?action=approved-users`, { cache: "no-store", credentials: "include" });
+export async function loadApprovedUsers(apiUrl, search) {
+  const query = new URLSearchParams({ action: "approved-users", q: search });
+  const response = await fetch(`${apiUrl}/api/lists?${query}`, { cache: "no-store", credentials: "include" });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || "Could not load users.");
   return result;

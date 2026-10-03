@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { hashPassword, verifyPassword } from "../api/_lib/passwords.js";
-import recover from "../api/auth/recover.js";
-import requests from "../api/admin/requests.js";
+import recover from "../api/_lib/routes/auth/recover.js";
+import requests from "../api/_lib/routes/admin/requests.js";
 import { authPage } from "../js/components/auth.js";
 
 function responseDouble() {
@@ -41,8 +41,8 @@ test("admin requests remain unauthorized without a session", async () => {
 });
 
 test("account lifecycle copy covers pending, approved, rejected, and resubmitted states", async () => {
-  const signupSource = await import("node:fs/promises").then((fs) => fs.readFile(new URL("../api/auth/signup.js", import.meta.url), "utf8"));
-  const loginSource = await import("node:fs/promises").then((fs) => fs.readFile(new URL("../api/auth/login.js", import.meta.url), "utf8"));
+  const signupSource = await import("node:fs/promises").then((fs) => fs.readFile(new URL("../api/_lib/routes/auth/signup.js", import.meta.url), "utf8"));
+  const loginSource = await import("node:fs/promises").then((fs) => fs.readFile(new URL("../api/_lib/routes/auth/login.js", import.meta.url), "utf8"));
   assert.match(signupSource, /pending/);
   assert.match(signupSource, /resubmitted/);
   assert.match(loginSource, /waiting for admin approval/);

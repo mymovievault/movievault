@@ -1,5 +1,5 @@
-import { clearSession, sessionCookie } from "../_lib/session.js";
-import { setCors } from "../_lib/cors.js";
+import { clearSession, sessionCookie } from "../../session.js";
+import { setCors } from "../../cors.js";
 
 export default async function logout(request, response) {
   setCors(response);

@@ -1,8 +1,8 @@
-import { findUser } from "../_lib/database.js";
-import { verifyPassword } from "../_lib/passwords.js";
-import { createSession } from "../_lib/session.js";
-import { setCors } from "../_lib/cors.js";
-import { rateLimit } from "../_lib/rate-limit.js";
+import { findUser } from "../../database.js";
+import { verifyPassword } from "../../passwords.js";
+import { createSession } from "../../session.js";
+import { setCors } from "../../cors.js";
+import { rateLimit } from "../../rate-limit.js";
 
 export default async function login(request, response) {
   setCors(response);

@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import { consumePasswordResetToken, deleteUserSessions, getUserById, recordAudit, updateUserPassword } from "../_lib/database.js";
-import { hashPassword } from "../_lib/passwords.js";
-import { setCors } from "../_lib/cors.js";
-import { rateLimit } from "../_lib/rate-limit.js";
+import { consumePasswordResetToken, deleteUserSessions, getUserById, recordAudit, updateUserPassword } from "../../database.js";
+import { hashPassword } from "../../passwords.js";
+import { setCors } from "../../cors.js";
+import { rateLimit } from "../../rate-limit.js";
 
 function tokenHash(token) {
   return crypto.createHash("sha256").update(token).digest("hex");

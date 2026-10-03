@@ -5,7 +5,7 @@ export function movieForm() {
   return `<details class="add-movie-panel"><summary class="button button-primary">Add a movie <span>+</span></summary><form class="movie-form" data-add-movie><div class="form-heading"><p class="eyebrow">NEW ENTRY</p><h2>Log what you are watching</h2><p class="form-hint">Search TMDB by title to fill in the film details, then add your viewing information.</p></div><div class="form-grid"><label class="form-wide">Title or series<input name="title" data-title-search required autocomplete="off" placeholder="Start typing a title..." /><div class="search-results" data-title-results></div></label><label>Status<select name="status"><option value="watching">Watching now</option><option value="watched">Watched</option><option value="wishlist">Want to watch</option><option value="upcoming">Upcoming</option></select></label><label>Where are you watching?<select name="watchingMode" data-watching-mode><option value="ott">OTT / streaming</option><option value="theatre">Theatre</option></select></label><label data-ott-field>Region<select name="watchRegion" data-watch-region><option value="IN">India</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option></select></label><label data-ott-field>OTT platform<input name="ottPlatform" data-ott-platform placeholder="Select a provider after choosing a title" /><div class="search-results" data-ott-results></div></label><input name="ottAvailability" data-ott-availability type="hidden" /><label data-theatre-field hidden>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" placeholder="Search a theatre..." /><div class="search-results" data-theatre-results></div></label><label>Your rating<input name="rating" type="number" min="1" max="10" step="1" placeholder="1–10" /></label><label>Watched date<input name="watchedDate" type="date" /></label><input name="poster" data-poster type="hidden" /><label class="form-wide">Notes<textarea name="notes" rows="3" placeholder="A quick note for future you..."></textarea></label><label class="form-wide">Tags<input name="tags" placeholder="favourite, rewatch" /></label></div><div class="form-actions"><button class="button button-primary" type="submit">Save to vault <span>↗</span></button><button class="text-link" type="reset">Clear form</button></div></form></details>`;
 }
 
-export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchlists = [], approvedUsers = []) {
+export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchlists = [], searchApprovedUsers = async () => []) {
   const form = root.querySelector("[data-add-movie]");
   if (!form) return;
   form.querySelector("[data-watch-region]")?.closest("label")?.remove();
@@ -15,8 +15,7 @@ export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchli
   if (wishlistOption) wishlistOption.textContent = "Want to watch / Watchlist";
   const listOptions = watchlists.filter((list) => list.is_owner).map((list) => `<option value="${escapeAttr(list.id)}">${escapeHtml(list.name)}</option>`).join("");
   form.querySelector('[name="status"]')?.insertAdjacentHTML("beforebegin", `<label>Save to list<select name="listId" required>${listOptions}</select></label>`);
-  const collaborators = approvedUsers.map((username) => `<label class="watched-with-option"><input type="checkbox" name="watchedWith" value="${escapeAttr(username)}" /><span>${escapeHtml(username)}</span></label>`).join("");
-  form.querySelector('[name="status"]')?.insertAdjacentHTML("afterend", `<fieldset class="watched-with-field" data-watched-with hidden><legend>Watched with</legend><div class="watched-with-options">${collaborators || `<span class="form-hint">No other approved users yet.</span>`}</div></fieldset>`);
+  form.querySelector('[name="status"]')?.insertAdjacentHTML("afterend", `<fieldset class="watched-with-field" data-watched-with hidden><legend>Watched with</legend><div class="watched-with-selected" data-watched-with-selected></div><label class="watched-with-search-label">Add people<input type="search" data-watched-with-search autocomplete="off" placeholder="Search people..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="watched-with-results" /></label><div class="search-results watched-with-results" id="watched-with-results" data-watched-with-results role="listbox" aria-label="People to tag"></div><p class="search-status watched-with-status" data-watched-with-status role="status">Type at least 2 characters.</p></fieldset>`);
   const mode = form.querySelector("[data-watching-mode]");
   const watchedWith = form.querySelector("[data-watched-with]");
   const ottField = form.querySelector("[data-ott-field]");
@@ -30,6 +29,7 @@ export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchli
   const updateWatchedWith = () => { watchedWith.hidden = status.value !== "watched"; };
   status.addEventListener("change", updateWatchedWith);
   updateWatchedWith();
+  const getWatchedWith = bindWatchedWithSearch(form, searchApprovedUsers);
   bindTitleSearch(form, tmdbClient);
   bindProviderSearch(form, tmdbClient);
   bindTheatreSearch(form, theatreClient);
@@ -37,8 +37,104 @@ export function bindMovieForm(root, onSubmit, tmdbClient, theatreClient, watchli
     event.preventDefault();
     const metadata = form.dataset.metadata ? JSON.parse(form.dataset.metadata) : {};
     const formData = new FormData(form);
-    onSubmit({ ...Object.fromEntries(formData), watchedWith: formData.getAll("watchedWith") }, metadata);
+    onSubmit({ ...Object.fromEntries(formData), watchedWith: getWatchedWith() }, metadata);
   });
+}
+
+function bindWatchedWithSearch(form, searchApprovedUsers) {
+  const input = form.querySelector("[data-watched-with-search]");
+  const selectedContainer = form.querySelector("[data-watched-with-selected]");
+  const results = form.querySelector("[data-watched-with-results]");
+  const status = form.querySelector("[data-watched-with-status]");
+  const selected = new Set();
+  let timer;
+  let requestId = 0;
+
+  const initials = (username) => username.split(/[._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || username.slice(0, 2).toUpperCase();
+  const renderSelected = () => {
+    selectedContainer.innerHTML = [...selected].map((username) => `<span class="watched-with-chip"><span class="watched-with-avatar" aria-hidden="true">${escapeHtml(initials(username))}</span><span class="watched-with-name">@${escapeHtml(username)}</span><button type="button" class="watched-with-remove" data-remove-watched-with="${escapeAttr(username)}" aria-label="Remove @${escapeAttr(username)}">×</button></span>`).join("");
+  };
+
+  const closeResults = () => {
+    results.replaceChildren();
+    input.setAttribute("aria-expanded", "false");
+  };
+
+  const selectUser = (username) => {
+    selected.add(username);
+    renderSelected();
+    input.value = "";
+    input.focus();
+    requestId += 1;
+    clearTimeout(timer);
+    closeResults();
+    status.textContent = "Type at least 2 characters to add another person.";
+  };
+
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    const currentRequest = ++requestId;
+    const query = input.value.trim();
+    closeResults();
+    if (query.length < 2) {
+      status.textContent = "Type at least 2 characters.";
+      return;
+    }
+    status.textContent = "Searching approved users...";
+    timer = setTimeout(async () => {
+      try {
+        const matches = await searchApprovedUsers(query);
+        if (currentRequest !== requestId) return;
+        const options = matches.filter((username) => !selected.has(username));
+        results.innerHTML = options.map((username) => `<button type="button" role="option" aria-selected="false" class="search-result watched-with-result" data-watched-user="${escapeAttr(username)}"><span class="watched-with-avatar" aria-hidden="true">${escapeHtml(initials(username))}</span><span class="watched-with-user"><strong>@${escapeHtml(username)}</strong><small>Movie Vault member</small></span><span class="watched-with-add" aria-hidden="true">+</span></button>`).join("");
+        input.setAttribute("aria-expanded", String(options.length > 0));
+        status.textContent = options.length ? `${options.length} matching user${options.length === 1 ? "" : "s"}.` : "No matching approved users.";
+      } catch {
+        if (currentRequest !== requestId) return;
+        status.textContent = "User search is unavailable. Try again.";
+      }
+    }, 250);
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeResults();
+    if (event.key === "ArrowDown") {
+      const firstResult = results.querySelector("[data-watched-user]");
+      if (firstResult) {
+        event.preventDefault();
+        firstResult.focus();
+      }
+    }
+    if (event.key === "Enter") {
+      const firstResult = results.querySelector("[data-watched-user]");
+      if (firstResult) {
+        event.preventDefault();
+        selectUser(firstResult.dataset.watchedUser);
+      }
+    }
+  });
+
+  results.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      input.focus();
+    }
+  });
+
+  results.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-watched-user]");
+    if (option) selectUser(option.dataset.watchedUser);
+  });
+
+  selectedContainer.addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-watched-with]");
+    if (!remove) return;
+    selected.delete(remove.dataset.removeWatchedWith);
+    renderSelected();
+    input.focus();
+  });
+
+  return () => [...selected];
 }
 
 function bindTheatreSearch(form, theatreClient) {

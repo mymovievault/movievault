@@ -1,5 +1,5 @@
-import { setCors } from "./_lib/cors.js";
-import { rateLimit } from "./_lib/rate-limit.js";
+import { setCors } from "../cors.js";
+import { rateLimit } from "../rate-limit.js";
 
 export default async function tmdb(request, response) {
   setCors(response);

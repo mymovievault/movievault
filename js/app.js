@@ -28,7 +28,6 @@ async function boot() {
     }
     const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
     let watchlists = MOVIE_API_URL ? await loadWatchlists(MOVIE_API_URL) : [];
-    const approvedUsers = MOVIE_API_URL ? await loadApprovedUsers(MOVIE_API_URL) : [];
     let curatedUpcoming = [];
     try {
       curatedUpcoming = await loadUpcoming(MOVIE_API_URL);
@@ -45,7 +44,7 @@ async function boot() {
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
       else if (active === "/lists") bindLists(app, MOVIE_API_URL, (lists) => { watchlists = lists; });
       else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render, watchlists);
-      else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists, approvedUsers);
+      else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists);
     };
 
     registerRoute("/", () => render(homePage(library, watchlists), "/"));
@@ -84,7 +83,7 @@ function bindNavigation() {
   });
 }
 
-function bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists, approvedUsers) {
+function bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists) {
   const root = document.querySelector("main");
   if (!root) return;
   bindFilters(root);
@@ -127,7 +126,7 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
       library.remove(record.tmdbId);
       window.alert(error.message);
     }
-  }, tmdbClient, theatreClient, watchlists, approvedUsers);
+  }, tmdbClient, theatreClient, watchlists, (query) => loadApprovedUsers(MOVIE_API_URL, query));
   const search = root.querySelector("[data-search]");
   if (search) search.addEventListener("input", () => {
     const query = search.value.toLowerCase();

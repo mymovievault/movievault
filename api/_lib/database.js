@@ -158,9 +158,9 @@ export async function listUsers() {
   return sql`SELECT id, username, status, role, created_at FROM users ORDER BY created_at ASC`;
 }
 
-export async function listApprovedUsernames(exceptUsername) {
+export async function searchApprovedUsernames(search, exceptUsername) {
   const sql = await ready();
-  const rows = await sql`SELECT username FROM users WHERE status = 'approved' AND username <> ${exceptUsername} ORDER BY username`;
+  const rows = await sql`SELECT username FROM users WHERE status = 'approved' AND username <> ${exceptUsername} AND username ILIKE ${`%${search}%`} ORDER BY username LIMIT 20`;
   return rows.map((row) => row.username);
 }
 

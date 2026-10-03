@@ -1,7 +1,7 @@
-import { addWatchlistItem, createWatchlist, deleteWatchlist, deleteWatchlistItem, listApprovedUsernames, listWatchlistItems, listWatchlists, recordAudit, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "./_lib/database.js";
-import { readSession } from "./_lib/session.js";
-import { setCors } from "./_lib/cors.js";
-import { rateLimit } from "./_lib/rate-limit.js";
+import { addWatchlistItem, createWatchlist, deleteWatchlist, deleteWatchlistItem, searchApprovedUsernames, listWatchlistItems, listWatchlists, recordAudit, revokeWatchlistShare, shareWatchlist, updateWatchlistItem } from "../database.js";
+import { readSession } from "../session.js";
+import { setCors } from "../cors.js";
+import { rateLimit } from "../rate-limit.js";
 
 export default async function lists(request, response) {
   setCors(response);
@@ -14,7 +14,10 @@ export default async function lists(request, response) {
     if (request.method === "GET") {
       if (request.query?.action === "approved-users") {
         response.setHeader("Cache-Control", "no-store");
-        return response.status(200).json(await listApprovedUsernames(session.username));
+        const search = String(request.query?.q || "").trim();
+        if (search.length > 50) return response.status(400).json({ error: "Search must be 50 characters or fewer." });
+        if (search.length < 2) return response.status(200).json([]);
+        return response.status(200).json(await searchApprovedUsernames(search, session.username));
       }
       if (request.query?.listId) return response.status(200).json(await listWatchlistItems(session.username, request.query.listId));
       return response.status(200).json(await listWatchlists(session.username));

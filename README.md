@@ -16,6 +16,8 @@ New account registrations start as pending requests. The `abilash9007` account i
 
 Connect this repository to Vercel, add a Neon/Postgres storage integration, and configure these environment variables:
 
+All API paths dispatch through one Vercel function. Add handlers under `api/_lib/routes/` and register them in `api/[...route].js` rather than adding endpoint files directly under `api/`.
+
 - `POSTGRES_URL`: created by the Neon/Postgres integration
 - `SESSION_SECRET`: a long random value used for session cookies
 - `FRONTEND_ORIGIN`: your GitHub Pages origin without the path, for example `https://mymovievault.github.io`
