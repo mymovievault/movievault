@@ -10,12 +10,52 @@ function getSql() {
   return neon(connectionString);
 }
 
+export async function claimMigration(sql, version) {
+  for (let attempt = 0; attempt < 360; attempt += 1) {
+    const [completed] = await sql`SELECT version FROM schema_migrations WHERE version = ${version}`;
+    if (completed) return null;
+    const [lock] = await sql`SELECT locked_until > NOW() AS active FROM schema_migration_locks WHERE version = ${version}`;
+    if (!lock?.active) {
+      const token = crypto.randomUUID();
+      const claimed = await sql`INSERT INTO schema_migration_locks (version, lock_token, locked_until) VALUES (${version}, ${token}, NOW() + INTERVAL '10 minutes') ON CONFLICT (version) DO UPDATE SET lock_token = EXCLUDED.lock_token, locked_until = EXCLUDED.locked_until WHERE schema_migration_locks.locked_until < NOW() RETURNING lock_token`;
+      if (claimed[0]?.lock_token) return token;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`Database migration ${version} is still running; retry the request.`);
+}
+
 async function ready() {
   if (!schemaPromise) {
     const sql = getSql();
     schemaPromise = (async () => {
       await sql`CREATE TABLE IF NOT EXISTS movies (tmdb_id TEXT NOT NULL, owner_login TEXT, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (owner_login, tmdb_id))`;
       await sql`ALTER TABLE movies ADD COLUMN IF NOT EXISTS owner_login TEXT`;
+      await sql`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', role TEXT NOT NULL DEFAULT 'member', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number TEXT`;
+      await sql`UPDATE users SET status = 'approved', role = 'admin' WHERE username = ${process.env.ADMIN_USERNAME || "abilash9007"} AND (status IS DISTINCT FROM 'approved' OR role IS DISTINCT FROM 'admin')`;
+      await sql`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL)`;
+      await sql`CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ)`;
+      await sql`CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, actor_username TEXT, action TEXT NOT NULL, target_type TEXT NOT NULL, target_id TEXT, metadata JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`CREATE TABLE IF NOT EXISTS watchlists (id TEXT PRIMARY KEY, owner_username TEXT NOT NULL, name TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (owner_username, name))`;
+      await sql`CREATE TABLE IF NOT EXISTS watchlist_shares (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, viewer_username TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, viewer_username))`;
+      await sql`CREATE TABLE IF NOT EXISTS watchlist_items (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, tmdb_id TEXT NOT NULL, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, tmdb_id))`;
+      await sql`CREATE TABLE IF NOT EXISTS media_catalog (media_id TEXT PRIMARY KEY, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`CREATE TABLE IF NOT EXISTS media_aliases (provider TEXT NOT NULL, external_id TEXT NOT NULL, media_id TEXT NOT NULL REFERENCES media_catalog(media_id) ON DELETE CASCADE, PRIMARY KEY (provider, external_id))`;
+      await sql`CREATE TABLE IF NOT EXISTS media_people (person_id TEXT PRIMARY KEY, provider TEXT NOT NULL, external_id TEXT NOT NULL, record JSONB NOT NULL, UNIQUE (provider, external_id))`;
+      await sql`CREATE TABLE IF NOT EXISTS media_credits (media_id TEXT NOT NULL REFERENCES media_catalog(media_id) ON DELETE CASCADE, person_id TEXT NOT NULL REFERENCES media_people(person_id), role TEXT NOT NULL, character TEXT NOT NULL DEFAULT '', credit_order INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (media_id, person_id, role, character))`;
+      await sql`ALTER TABLE movies ADD COLUMN IF NOT EXISTS catalog_id TEXT`;
+      await sql`ALTER TABLE watchlist_items ADD COLUMN IF NOT EXISTS catalog_id TEXT`;
+      await sql`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`CREATE TABLE IF NOT EXISTS schema_migration_locks (version TEXT PRIMARY KEY, lock_token TEXT NOT NULL, locked_until TIMESTAMPTZ NOT NULL)`;
+      const migrationVersion = "media_catalog_normalization_v2";
+      const migrationToken = await claimMigration(sql, migrationVersion);
+      if (migrationToken) {
+        try {
       await sql`UPDATE movies SET owner_login = COALESCE(owner_login, ${process.env.GITHUB_SEED_OWNER || "abilash9007"}) WHERE owner_login IS NULL`;
       await sql`ALTER TABLE movies ALTER COLUMN owner_login SET NOT NULL`;
       await sql`DO $$
@@ -33,25 +73,6 @@ async function ready() {
           END IF;
         END
       $$`;
-      await sql`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', role TEXT NOT NULL DEFAULT 'member', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
-      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`;
-      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`;
-      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT`;
-      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`;
-      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number TEXT`;
-      await sql`UPDATE users SET status = 'approved', role = 'admin' WHERE username = ${process.env.ADMIN_USERNAME || "abilash9007"}`;
-      await sql`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL)`;
-      await sql`CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ)`;
-      await sql`CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, actor_username TEXT, action TEXT NOT NULL, target_type TEXT NOT NULL, target_id TEXT, metadata JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
-      await sql`CREATE TABLE IF NOT EXISTS watchlists (id TEXT PRIMARY KEY, owner_username TEXT NOT NULL, name TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (owner_username, name))`;
-      await sql`CREATE TABLE IF NOT EXISTS watchlist_shares (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, viewer_username TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, viewer_username))`;
-      await sql`CREATE TABLE IF NOT EXISTS watchlist_items (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, tmdb_id TEXT NOT NULL, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, tmdb_id))`;
-      await sql`CREATE TABLE IF NOT EXISTS media_catalog (media_id TEXT PRIMARY KEY, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
-      await sql`CREATE TABLE IF NOT EXISTS media_aliases (provider TEXT NOT NULL, external_id TEXT NOT NULL, media_id TEXT NOT NULL REFERENCES media_catalog(media_id) ON DELETE CASCADE, PRIMARY KEY (provider, external_id))`;
-      await sql`CREATE TABLE IF NOT EXISTS media_people (person_id TEXT PRIMARY KEY, provider TEXT NOT NULL, external_id TEXT NOT NULL, record JSONB NOT NULL, UNIQUE (provider, external_id))`;
-      await sql`CREATE TABLE IF NOT EXISTS media_credits (media_id TEXT NOT NULL REFERENCES media_catalog(media_id) ON DELETE CASCADE, person_id TEXT NOT NULL REFERENCES media_people(person_id), role TEXT NOT NULL, character TEXT NOT NULL DEFAULT '', credit_order INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (media_id, person_id, role, character))`;
-      await sql`ALTER TABLE movies ADD COLUMN IF NOT EXISTS catalog_id TEXT`;
-      await sql`ALTER TABLE watchlist_items ADD COLUMN IF NOT EXISTS catalog_id TEXT`;
       await sql`DO $$
         BEGIN
           LOCK TABLE movies IN ACCESS EXCLUSIVE MODE;
@@ -199,6 +220,8 @@ async function ready() {
       await sql`INSERT INTO watchlist_items (watchlist_id, tmdb_id, catalog_id, record) SELECT md5(m.owner_login || ':main'), m.catalog_id, m.catalog_id, m.record FROM movies m ON CONFLICT DO NOTHING`;
       await sql`DO $$
         BEGIN
+          LOCK TABLE schema_migrations IN ACCESS EXCLUSIVE MODE;
+          IF NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version = 'dedupe_media_aliases_v1') THEN
           CREATE TEMP TABLE catalog_alias_candidates ON COMMIT DROP AS
             SELECT media_id, provider,
               CASE WHEN provider LIKE 'tmdb:%' THEN regexp_replace(external_id, '^tmdb:(movie|tv):', '')
@@ -325,8 +348,17 @@ async function ready() {
           INSERT INTO media_aliases (provider, external_id, media_id)
             SELECT provider, external_id, media_id FROM normalized_catalog_aliases
             ON CONFLICT (provider, external_id) DO UPDATE SET media_id = EXCLUDED.media_id;
+          INSERT INTO schema_migrations (version) VALUES ('dedupe_media_aliases_v1') ON CONFLICT DO NOTHING;
+          END IF;
         END
       $$`;
+          await sql`INSERT INTO schema_migrations (version) VALUES (${migrationVersion}) ON CONFLICT DO NOTHING`;
+        } catch (error) {
+          await sql`DELETE FROM schema_migration_locks WHERE version = ${migrationVersion} AND lock_token = ${migrationToken}`;
+          throw error;
+        }
+        await sql`DELETE FROM schema_migration_locks WHERE version = ${migrationVersion} AND lock_token = ${migrationToken}`;
+      }
     })();
   }
   await schemaPromise;
