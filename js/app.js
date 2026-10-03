@@ -14,6 +14,7 @@ import { createTheatreClient } from "./api/places.js";
 import { authPage, bindAuth } from "./components/auth.js";
 import { adminPage, bindAdmin } from "./components/admin.js";
 import { listsPage, bindLists } from "./pages/lists.js";
+import { profilePage, bindProfile } from "./pages/profile.js";
 import { escapeHtml } from "./utils/escape.js";
 
 const app = document.querySelector("#app");
@@ -43,6 +44,7 @@ async function boot() {
       bindNavigation();
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
       else if (active === "/lists") bindLists(app, MOVIE_API_URL, (lists) => { watchlists = lists; });
+      else if (active === "/profile") bindProfile(app, MOVIE_API_URL);
       else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render, watchlists);
       else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists);
     };
@@ -53,6 +55,7 @@ async function boot() {
     registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming, watchlists), "/upcoming"));
     registerRoute("/admin", () => render(adminPage(), "/admin"));
     registerRoute("/lists", () => render(listsPage(library), "/lists"));
+    registerRoute("/profile", () => render(profilePage(session), "/profile"));
     registerRoute("/movie", (path) => {
       const tmdbId = path.split("/").pop();
       const movie = library.find(tmdbId) || findByTmdbId(watchlists.flatMap((list) => list.items || []), tmdbId);
@@ -68,7 +71,7 @@ async function boot() {
 function shell(content, active, library, session) {
   const stats = library.stats();
   const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
-  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><span class="account-name">${escapeHtml(session.login)}</span><button class="button button-quiet" data-logout>Sign out</button></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  return `<header class="topbar"><a class="brand" href="#/">MOVIE <span>VAULT</span></a><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><details class="account-menu"><summary class="account-trigger"><span class="account-avatar" aria-hidden="true">${escapeHtml(session.login.slice(0, 1).toUpperCase())}</span><span class="account-name">${escapeHtml(session.login)}</span><span aria-hidden="true">⌄</span></summary><div class="account-menu-panel"><a class="account-menu-item" href="#/profile" data-route="/profile">Profile &amp; settings</a><button class="account-menu-item" data-logout>Sign out</button></div></details></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function navItem(route, label, active) {

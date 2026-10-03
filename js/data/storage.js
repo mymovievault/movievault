@@ -32,6 +32,33 @@ export async function logout(apiUrl) {
   await fetch(`${apiUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
 }
 
+async function authRequest(path, options = {}) {
+  const response = await fetch(path, { credentials: "include", ...options });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Could not update your account.");
+  return result;
+}
+
+export function loadProfile(apiUrl) {
+  return authRequest(`${apiUrl}/api/auth/profile`, { cache: "no-store" });
+}
+
+export function saveProfile(apiUrl, profile) {
+  return authRequest(`${apiUrl}/api/auth/profile`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profile),
+  });
+}
+
+export function changePassword(apiUrl, currentPassword, newPassword) {
+  return authRequest(`${apiUrl}/api/auth/password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
 export async function saveMovie(record, apiUrl) {
   if (!apiUrl) throw new Error("Configure MOVIE_API_URL before saving movies.");
   const response = await fetch(apiUrl, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(record) });

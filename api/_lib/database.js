@@ -35,6 +35,9 @@ async function ready() {
       await sql`CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', role TEXT NOT NULL DEFAULT 'member', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS mobile_number TEXT`;
       await sql`UPDATE users SET status = 'approved', role = 'admin' WHERE username = ${process.env.ADMIN_USERNAME || "abilash9007"}`;
       await sql`CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL)`;
       await sql`CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ)`;
@@ -107,6 +110,18 @@ export async function getUserById(userId) {
 export async function updateUserPassword(userId, passwordHash) {
   const sql = await ready();
   const rows = await sql`UPDATE users SET password_hash = ${passwordHash} WHERE id = ${userId} RETURNING id, username`;
+  return rows[0] || null;
+}
+
+export async function getUserProfile(username) {
+  const sql = await ready();
+  const rows = await sql`SELECT username, role, display_name, email, mobile_number FROM users WHERE username = ${username}`;
+  return rows[0] || null;
+}
+
+export async function updateUserProfile(username, profile) {
+  const sql = await ready();
+  const rows = await sql`UPDATE users SET display_name = ${profile.displayName}, email = ${profile.email}, mobile_number = ${profile.mobileNumber} WHERE username = ${username} RETURNING username, role, display_name, email, mobile_number`;
   return rows[0] || null;
 }
 

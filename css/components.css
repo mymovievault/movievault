@@ -21,6 +21,7 @@
 .error-state code { display: block; margin-top: 14px; color: #d8a35d; white-space: pre-wrap; }
 .loading-screen { margin: auto; color: #d8a35d; font: 11px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
 .account-name { color: #828781; font: 10px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.account-avatar { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #50564e; border-radius: 50%; color: #d8a35d; font: 11px "DM Mono", monospace; }
 .auth-page { display: grid; min-height: 78vh; place-items: center; }
 .auth-panel { width: min(440px, 100%); padding: 48px; border: 1px solid #343833; background: rgba(37, 41, 37, .5); }
 .auth-panel h1 { margin: 16px 0; font-size: 52px; line-height: .98; letter-spacing: -.07em; }
