@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import { createUser, findUser, reopenUser } from "../../database.js";
-import { hashPassword } from "../../passwords.js";
-import { setCors } from "../../cors.js";
-import { rateLimit } from "../../rate-limit.js";
+import { createUser, findUser, reopenUser } from "../_lib/database.js";
+import { hashPassword } from "../_lib/passwords.js";
+import { setCors } from "../_lib/cors.js";
+import { rateLimit } from "../_lib/rate-limit.js";
 
 export default async function signup(request, response) {
   setCors(response);

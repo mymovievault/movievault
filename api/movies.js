@@ -1,7 +1,7 @@
-import { addWatchlistItem, areApprovedUsernames, deleteMovie, listMovies, recordAudit, updateMovie, upsertMovie } from "../database.js";
-import { readSession } from "../session.js";
-import { rateLimit } from "../rate-limit.js";
-import { validWatchedWith } from "../watched-with.js";
+import { addWatchlistItem, areApprovedUsernames, deleteMovie, listMovies, recordAudit, updateMovie, upsertMovie } from "./_lib/database.js";
+import { readSession } from "./_lib/session.js";
+import { rateLimit } from "./_lib/rate-limit.js";
+import { validWatchedWith } from "./_lib/watched-with.js";
 
 function headers(response) {
   response.setHeader("Access-Control-Allow-Origin", process.env.FRONTEND_ORIGIN || process.env.FRONTEND_URL || "*");

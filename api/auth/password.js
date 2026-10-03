@@ -1,8 +1,8 @@
-import { deleteUserSessions, findUser, recordAudit, updateUserPassword } from "../../database.js";
-import { hashPassword, verifyPassword } from "../../passwords.js";
-import { readSession } from "../../session.js";
-import { setCors } from "../../cors.js";
-import { rateLimit } from "../../rate-limit.js";
+import { deleteUserSessions, findUser, recordAudit, updateUserPassword } from "../_lib/database.js";
+import { hashPassword, verifyPassword } from "../_lib/passwords.js";
+import { readSession } from "../_lib/session.js";
+import { setCors } from "../_lib/cors.js";
+import { rateLimit } from "../_lib/rate-limit.js";
 
 export default async function password(request, response) {
   setCors(response);

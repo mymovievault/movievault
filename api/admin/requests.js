@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
-import { findUser, listPendingUsers, listUsers, recordAudit, savePasswordResetToken, updateUserStatus } from "../../database.js";
-import { readSession } from "../../session.js";
-import { setCors } from "../../cors.js";
-import { rateLimit } from "../../rate-limit.js";
+import { findUser, listPendingUsers, listUsers, recordAudit, savePasswordResetToken, updateUserStatus } from "../_lib/database.js";
+import { readSession } from "../_lib/session.js";
+import { setCors } from "../_lib/cors.js";
+import { rateLimit } from "../_lib/rate-limit.js";
 
 export default async function requests(request, response) {
   setCors(response);

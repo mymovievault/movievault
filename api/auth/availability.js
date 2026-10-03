@@ -1,6 +1,6 @@
-import { findUser } from "../../database.js";
-import { setCors } from "../../cors.js";
-import { rateLimit } from "../../rate-limit.js";
+import { findUser } from "../_lib/database.js";
+import { setCors } from "../_lib/cors.js";
+import { rateLimit } from "../_lib/rate-limit.js";
 
 export default async function availability(request, response) {
   setCors(response);
