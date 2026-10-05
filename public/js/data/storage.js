@@ -50,6 +50,18 @@ export function loadProfile(apiUrl) {
   return authRequest(`${apiUrl}/api/auth/profile`, { cache: "no-store" });
 }
 
+export function loadInvitations(apiUrl) {
+  return authRequest(`${apiUrl}/api/invitations`, { cache: "no-store" });
+}
+
+export function respondToInvitation(apiUrl, id, action) {
+  return authRequest(`${apiUrl}/api/invitations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, action }),
+  });
+}
+
 export function saveProfile(apiUrl, profile) {
   return authRequest(`${apiUrl}/api/auth/profile`, {
     method: "POST",

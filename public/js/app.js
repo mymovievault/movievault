@@ -1,5 +1,5 @@
 import { startRouter, registerRoute, canGoBack, goBack } from "./router.js";
-import { loadFlatFile, loadMovie, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, loadApprovedUsers, logout } from "./data/storage.js";
+import { loadFlatFile, loadMovie, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, loadApprovedUsers, loadInvitations, respondToInvitation, logout } from "./data/storage.js";
 import { createLibrary, findByTmdbId } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
@@ -8,6 +8,7 @@ import { upcomingPage } from "./pages/upcoming.js";
 import { movieModal } from "./components/movie-modal.js";
 import { bindFilters, bindLibraryFilters } from "./components/filters.js";
 import { bindMovieForm } from "./components/movie-form.js";
+import { bindMovieEditForm } from "./components/movie-form.js";
 import { createTmdbClient } from "./api/tmdb.js";
 import { TMDB_READ_TOKEN, MOVIE_API_URL } from "./config.js";
 import { createTheatreClient } from "./api/places.js";
@@ -37,6 +38,30 @@ async function boot() {
     let movieDetail = null;
     let fetchedMovieDetail = false;
     let curatedUpcoming = [];
+    let invitations = [];
+    let invitationError = "";
+    let invitationsLoadedAt = 0;
+    const refreshInvitations = async () => {
+      if (!MOVIE_API_URL) return;
+      try {
+        invitations = await loadInvitations(MOVIE_API_URL);
+        invitationError = "";
+        invitationsLoadedAt = Date.now();
+        const trigger = app.querySelector(".account-trigger");
+        trigger?.querySelector(".invitation-count")?.remove();
+        if (trigger && invitations.length) {
+          const count = document.createElement("span");
+          count.className = "invitation-count";
+          count.setAttribute("aria-label", `${invitations.length} pending invitations`);
+          count.textContent = invitations.length;
+          trigger.insertBefore(count, trigger.lastElementChild);
+        }
+      } catch {
+        invitationError = "Could not load invitations.";
+      }
+    };
+    await refreshInvitations();
+    if (MOVIE_API_URL) window.setInterval(refreshInvitations, 60_000);
     try {
       curatedUpcoming = await loadUpcoming(MOVIE_API_URL);
     } catch {
@@ -48,9 +73,27 @@ async function boot() {
     const tmdbClient = TMDB_READ_TOKEN || MOVIE_API_URL ? createTmdbClient({ token: TMDB_READ_TOKEN, apiUrl: MOVIE_API_URL }) : null;
     const theatreClient = createTheatreClient();
     const render = (content, active) => {
-      app.innerHTML = shell(content, active, library, session);
+      app.innerHTML = shell(content, active, library, session, invitations.length);
       bindNavigation();
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
+      else if (active === "/invitations") {
+        app.querySelectorAll("[data-invitation-action]").forEach((button) => button.addEventListener("click", async () => {
+          button.closest("[data-invitation-id]").querySelectorAll("button").forEach((actionButton) => { actionButton.disabled = true; });
+          try {
+            await respondToInvitation(MOVIE_API_URL, button.closest("[data-invitation-id]").dataset.invitationId, button.dataset.invitationAction);
+            if (button.dataset.invitationAction === "accept") libraryLoadedAt = 0;
+            await refreshInvitations();
+            render(invitationsPage(invitations, invitationError), "/invitations");
+          } catch (error) {
+            app.querySelector("[data-invitation-error]").textContent = error.message;
+            button.closest("[data-invitation-id]").querySelectorAll("button").forEach((actionButton) => { actionButton.disabled = false; });
+          }
+        }));
+        app.querySelector("[data-invitation-retry]")?.addEventListener("click", async () => {
+          await refreshInvitations();
+          render(invitationsPage(invitations, invitationError), "/invitations");
+        });
+      }
       else if (active === "/lists") {
         const listView = app.querySelector("[data-lists]");
         bindLists(app, MOVIE_API_URL, (lists) => {
@@ -72,6 +115,7 @@ async function boot() {
     registerRoute("/admin", () => render(adminPage(), "/admin"));
     registerRoute("/lists", () => render(listsPage(library), "/lists"));
     registerRoute("/profile", () => render(profilePage(session), "/profile"));
+    registerRoute("/invitations", () => render(invitationsPage(invitations, invitationError), "/invitations"));
     registerRoute("/genre", (path) => {
       let genre = "";
       try { genre = decodeURIComponent(path.slice("/genre/".length)); } catch { return render(genrePage("Genre", []), ""); }
@@ -105,6 +149,8 @@ async function boot() {
         return;
       }
       const now = Date.now();
+      if (path === "/invitations" || Date.now() - invitationsLoadedAt > 30_000) await refreshInvitations();
+      if (request !== routeRequest) return;
       const needsLibrary = (path === "/" || path === "/library" || path === "/wishlist" || path.startsWith("/genre/")) && now - libraryLoadedAt > 60_000;
       const needsLists = (path === "/" || path === "/upcoming" || path.startsWith("/genre/")) && now - listsLoadedAt > 60_000;
       const needsUpcoming = path === "/upcoming" && now - upcomingLoadedAt > 300_000;
@@ -158,11 +204,15 @@ async function boot() {
   }
 }
 
-function shell(content, active, library, session) {
+function shell(content, active, library, session, invitationCount = 0) {
   const stats = library.stats();
   const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
   const backButton = canGoBack() ? `<button type="button" class="back-button" data-back aria-label="Go back" title="Go back"><span aria-hidden="true">&larr;</span></button>` : "";
-  return `<header class="topbar"><div class="brand-group">${backButton}<a class="brand" href="#/">MOVIE <span>VAULT</span></a></div><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><details class="account-menu"><summary class="account-trigger"><span class="account-avatar" aria-hidden="true">${escapeHtml(session.login.slice(0, 1).toUpperCase())}</span><span class="account-name">${escapeHtml(session.login)}</span><span aria-hidden="true">⌄</span></summary><div class="account-menu-panel"><a class="account-menu-item" href="#/profile" data-route="/profile">Profile &amp; settings</a><button class="account-menu-item" data-logout>Sign out</button></div></details></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  return `<header class="topbar"><div class="brand-group">${backButton}<a class="brand" href="#/">MOVIE <span>VAULT</span></a></div><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><details class="account-menu"><summary class="account-trigger"><span class="account-avatar" aria-hidden="true">${escapeHtml(session.login.slice(0, 1).toUpperCase())}</span><span class="account-name">${escapeHtml(session.login)}</span>${invitationCount ? `<span class="invitation-count" aria-label="${invitationCount} pending invitations">${invitationCount}</span>` : ""}<span aria-hidden="true">⌄</span></summary><div class="account-menu-panel"><a class="account-menu-item" href="#/invitations" data-route="/invitations">Invitations</a><a class="account-menu-item" href="#/profile" data-route="/profile">Profile &amp; settings</a><button class="account-menu-item" data-logout>Sign out</button></div></details></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+}
+
+function invitationsPage(invitations, error) {
+  return `<main><section class="page-heading"><p class="eyebrow">YOUR INBOX</p><h1>Invitations</h1></section><section class="invitation-list"><p class="form-error" data-invitation-error role="alert">${escapeHtml(error)}</p>${error ? `<button type="button" class="button button-quiet" data-invitation-retry>Retry</button>` : invitations.length ? invitations.map((invitation) => `<article class="invitation-item" data-invitation-id="${escapeHtml(invitation.id)}"><div><h2>${escapeHtml(invitation.title || "Untitled")}${invitation.year ? ` <small>(${escapeHtml(invitation.year)})</small>` : ""}</h2><p>${escapeHtml(invitation.inviter)} watched this with you.</p></div><div class="invitation-actions"><button type="button" class="button button-primary" data-invitation-action="accept">Accept</button><button type="button" class="button button-quiet" data-invitation-action="decline">Decline</button></div></article>`).join("") : `<div class="empty-state">No pending invitations.</div>`}</section></main>`;
 }
 
 function navItem(route, label, active) {
@@ -230,11 +280,25 @@ function bindShelfControls(library, render, tmdbClient, theatreClient, active, w
     const query = search.value.toLowerCase();
     root.querySelectorAll(".movie-card").forEach((card) => { card.hidden = !card.textContent.toLowerCase().includes(query); });
   });
-  bindLibraryActions(root, library, render, active);
+  bindLibraryActions(root, library, render, active, (query) => loadApprovedUsers(MOVIE_API_URL, query), theatreClient);
 }
 
-function bindLibraryActions(root, library, render, active) {
+function bindLibraryActions(root, library, render, active, searchApprovedUsers, theatreClient) {
   const status = root.querySelector("[data-mutation-status]");
+  root.querySelectorAll("[data-edit-movie]").forEach((form) => bindMovieEditForm(form, async (changes) => {
+    const editStatus = form.querySelector("[data-edit-status]");
+    const saveButton = form.querySelector('button[type="submit"]');
+    saveButton.disabled = true;
+    editStatus.textContent = "Saving...";
+    try {
+      const updated = await updateMovie(form.dataset.editMovie, changes, `${MOVIE_API_URL}/api/movies`);
+      library.update(form.dataset.editMovie, updated);
+      render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), active);
+    } catch (error) {
+      editStatus.textContent = error.message;
+      saveButton.disabled = false;
+    }
+  }, searchApprovedUsers, theatreClient));
   root.querySelectorAll("[data-movie-action]").forEach((button) => button.addEventListener("click", async () => {
     const tmdbId = button.dataset.movieId;
     button.disabled = true;

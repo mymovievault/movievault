@@ -3,8 +3,20 @@ import { neon } from "@neondatabase/serverless";
 import { canonicalMediaId, mediaAliases, splitMediaRecord, mergeMediaRecord } from "./media-records.js";
 
 let schemaPromise;
+let testSqlClient;
+
+export function setDatabaseClientForTests(client) {
+  testSqlClient = client;
+  schemaPromise = undefined;
+}
+
+export function resetDatabaseClientForTests() {
+  testSqlClient = undefined;
+  schemaPromise = undefined;
+}
 
 function getSql() {
+  if (testSqlClient) return testSqlClient;
   const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
   if (!connectionString) throw new Error("Configure POSTGRES_URL in Vercel.");
   return neon(connectionString);
@@ -45,6 +57,7 @@ async function ready() {
       await sql`CREATE TABLE IF NOT EXISTS watchlist_shares (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, viewer_username TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, viewer_username))`;
       await sql`CREATE TABLE IF NOT EXISTS watchlist_items (watchlist_id TEXT NOT NULL REFERENCES watchlists(id) ON DELETE CASCADE, tmdb_id TEXT NOT NULL, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (watchlist_id, tmdb_id))`;
       await sql`CREATE TABLE IF NOT EXISTS media_catalog (media_id TEXT PRIMARY KEY, record JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+      await sql`CREATE TABLE IF NOT EXISTS watched_invitations (id TEXT PRIMARY KEY, inviter_username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE, recipient_username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE, media_id TEXT NOT NULL REFERENCES media_catalog(media_id) ON DELETE CASCADE, watched_date TEXT, status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), resolved_at TIMESTAMPTZ, UNIQUE (inviter_username, recipient_username, media_id))`;
       await sql`CREATE TABLE IF NOT EXISTS media_aliases (provider TEXT NOT NULL, external_id TEXT NOT NULL, media_id TEXT NOT NULL REFERENCES media_catalog(media_id) ON DELETE CASCADE, PRIMARY KEY (provider, external_id))`;
       await sql`CREATE TABLE IF NOT EXISTS media_people (person_id TEXT PRIMARY KEY, provider TEXT NOT NULL, external_id TEXT NOT NULL, record JSONB NOT NULL, UNIQUE (provider, external_id))`;
       await sql`CREATE TABLE IF NOT EXISTS media_credits (media_id TEXT NOT NULL REFERENCES media_catalog(media_id) ON DELETE CASCADE, person_id TEXT NOT NULL REFERENCES media_people(person_id), role TEXT NOT NULL, character TEXT NOT NULL DEFAULT '', credit_order INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (media_id, person_id, role, character))`;
@@ -456,6 +469,47 @@ export async function upsertMovie(record, ownerLogin) {
   const { user } = splitMediaRecord(record, mediaId);
   const rows = await sql`INSERT INTO movies (tmdb_id, owner_login, record, catalog_id) VALUES (${mediaId}, ${ownerLogin}, ${JSON.stringify(user)}::jsonb, ${mediaId}) ON CONFLICT (owner_login, catalog_id) DO UPDATE SET record = EXCLUDED.record, created_at = NOW() RETURNING catalog_id, record`;
   return mergeMediaRecord(catalogRecord, rows[0]?.record || user, mediaId);
+}
+
+export async function syncWatchedInvitations(inviter, mediaId, usernames, watchedDate) {
+  const sql = await ready();
+  const pending = await sql`SELECT id, recipient_username FROM watched_invitations WHERE inviter_username = ${inviter} AND media_id = ${mediaId} AND status IN ('pending', 'declined')`;
+  for (const invitation of pending) {
+    if (!usernames.includes(invitation.recipient_username)) await sql`DELETE FROM watched_invitations WHERE id = ${invitation.id} AND status IN ('pending', 'declined')`;
+  }
+  for (const recipient of usernames) {
+    await sql`INSERT INTO watched_invitations (id, inviter_username, recipient_username, media_id, watched_date) VALUES (${crypto.randomUUID()}, ${inviter}, ${recipient}, ${mediaId}, ${watchedDate || null})
+      ON CONFLICT (inviter_username, recipient_username, media_id) DO UPDATE SET watched_date = EXCLUDED.watched_date WHERE watched_invitations.status = 'pending'`;
+  }
+}
+
+export async function listWatchedInvitations(username) {
+  const sql = await ready();
+  return sql`SELECT invitation.id, invitation.inviter_username AS inviter, invitation.media_id AS media_id, invitation.watched_date AS watched_date, invitation.created_at, catalog.record->>'title' AS title, catalog.record->>'poster' AS poster, catalog.record->>'year' AS year
+    FROM watched_invitations invitation JOIN media_catalog catalog ON catalog.media_id = invitation.media_id
+    WHERE invitation.recipient_username = ${username} AND invitation.status = 'pending' ORDER BY invitation.created_at DESC`;
+}
+
+export async function respondToWatchedInvitation(username, invitationId, action) {
+  const sql = await ready();
+  if (action === 'decline') {
+    const rows = await sql`UPDATE watched_invitations SET status = 'declined', resolved_at = NOW() WHERE id = ${invitationId} AND recipient_username = ${username} AND status = 'pending' RETURNING id`;
+    return rows.length > 0;
+  }
+  const rows = await sql`WITH accepted AS (
+      UPDATE watched_invitations SET status = 'accepted', resolved_at = NOW()
+      WHERE id = ${invitationId} AND recipient_username = ${username} AND status = 'pending'
+      RETURNING media_id, watched_date
+    ), saved AS (
+      INSERT INTO movies (tmdb_id, owner_login, record, catalog_id)
+      SELECT media_id, ${username}, jsonb_build_object('tmdbId', media_id, 'status', 'watched', 'watchedDate', watched_date), media_id FROM accepted
+      ON CONFLICT (owner_login, catalog_id) DO UPDATE SET record = CASE
+        WHEN movies.record->>'status' = 'watched' THEN movies.record
+        ELSE movies.record || jsonb_build_object('status', 'watched', 'watchedDate', COALESCE(movies.record->>'watchedDate', EXCLUDED.record->>'watchedDate'))
+      END
+      RETURNING catalog_id
+    ) SELECT catalog_id FROM saved`;
+  return rows.length > 0;
 }
 
 async function findOwnedMediaId(sql, ownerLogin, tmdbId) {

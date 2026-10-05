@@ -17,6 +17,24 @@
 .dot { color: #d8a35d; }
 .rating { color: #d8a35d; font: 11px "DM Mono", monospace; white-space: nowrap; }
 .empty-state, .error-state { color: #969b94; border: 1px solid #343833; padding: 55px; }
+.invitation-list { display: grid; gap: 12px; padding-bottom: 48px; }
+.invitation-item { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 0; border-bottom: 1px solid #343833; }
+.invitation-item h2 { margin: 0 0 8px; font-size: 20px; }
+.invitation-item h2 small, .invitation-item p { color: #969b94; font-size: 13px; }
+.invitation-item p { margin: 0; }
+.invitation-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.invitation-count { display: inline-block; min-width: 19px; padding: 3px 5px; color: #151715; background: #d8a35d; text-align: center; }
+@media (max-width: 600px) { .invitation-item { align-items: flex-start; flex-direction: column; gap: 14px; } }
+.movie-edit { margin-top: 10px; }
+.movie-edit > summary { width: fit-content; cursor: pointer; }
+.movie-edit-form { display: grid; gap: 12px; margin-top: 12px; padding: 14px; border: 1px solid #343833; background: #191c19; }
+.movie-edit-form label { display: grid; gap: 7px; color: #969b94; font: 10px "DM Mono", monospace; text-transform: uppercase; }
+.movie-edit-form input, .movie-edit-form select { width: 100%; min-width: 0; padding: 10px; color: #e9e5dc; background: #252925; border: 1px solid #50564e; font: inherit; font-size: 12px; text-transform: none; }
+.movie-edit-form [hidden] { display: none; }
+.movie-edit-form .theatre-name-search-button, .movie-edit-form .nearby-theatre-button, .movie-form .theatre-name-search-button, .movie-form .nearby-theatre-button { justify-self: start; }
+.movie-edit-form .watched-with-field { margin: 0; padding: 12px; }
+.movie-edit-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.movie-edit-actions p { margin: 0; }
 .error-state { width: min(600px, calc(100% - 48px)); margin: 100px auto; }
 .error-state code { display: block; margin-top: 14px; color: #d8a35d; white-space: pre-wrap; }
 .loading-screen { margin: auto; color: #d8a35d; font: 11px "DM Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }

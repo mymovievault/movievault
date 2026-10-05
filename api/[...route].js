@@ -1,4 +1,5 @@
 import lists from "./_lib/routes/lists.js";
+import invitations from "./_lib/routes/invitations.js";
 import metadata from "./_lib/routes/metadata.js";
 import movies from "./_lib/routes/movies.js";
 import tmdb from "./_lib/routes/tmdb.js";
@@ -7,6 +8,7 @@ import { routeKey } from "./_lib/route-key.js";
 
 const routes = new Map([
   ["lists", lists],
+  ["invitations", invitations],
   ["metadata", metadata],
   ["movies", movies],
   ["tmdb", tmdb],

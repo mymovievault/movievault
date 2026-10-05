@@ -1,4 +1,4 @@
-import { addWatchlistItem, areApprovedUsernames, deleteMovie, getMovie, listMovies, recordAudit, updateMovie, upsertMovie } from "../database.js";
+import { addWatchlistItem, areApprovedUsernames, deleteMovie, getMovie, listMovies, recordAudit, syncWatchedInvitations, updateMovie, upsertMovie } from "../database.js";
 import { readSession } from "../session.js";
 import { rateLimit } from "../rate-limit.js";
 import { validWatchedWith } from "../watched-with.js";
@@ -35,11 +35,13 @@ export default async function movies(request, response) {
       }
       if (changes.status && changes.status !== "watched") changes.watchedWith = [];
       const updated = await updateMovie(request.body?.tmdbId, changes, session.username);
+      if (updated && (Object.hasOwn(changes, "watchedWith") || changes.status)) await syncWatchedInvitations(session.username, updated.canonicalId, updated.status === "watched" ? updated.watchedWith || [] : [], updated.watchedDate);
       if (updated) await recordAudit(session.username, "movie_updated", "movie", String(request.body?.tmdbId));
       return updated ? response.status(200).json(updated) : response.status(404).json({ error: "Movie not found." });
     }
     if (request.method === "DELETE") {
       const deleted = await deleteMovie(request.body?.tmdbId, session.username);
+      if (deleted) await syncWatchedInvitations(session.username, deleted.canonicalId, [], null);
       if (deleted) await recordAudit(session.username, "movie_deleted", "movie", String(request.body?.tmdbId));
       return deleted ? response.status(200).json(deleted) : response.status(404).json({ error: "Movie not found." });
     }
@@ -54,7 +56,8 @@ export default async function movies(request, response) {
       const added = await addWatchlistItem(session.username, request.body.listId, record);
       if (!added) return response.status(404).json({ error: "Watchlist not found or not owned by you." });
     }
-    await upsertMovie(record, session.username);
+    const saved = await upsertMovie(record, session.username);
+    await syncWatchedInvitations(session.username, saved.canonicalId, record.watchedWith, record.watchedDate);
     await recordAudit(session.username, "movie_saved", "movie", String(record.tmdbId));
     return response.status(201).json(record);
   } catch (error) {
