@@ -1,4 +1,4 @@
-import { addWatchlistItem, areApprovedUsernames, deleteMovie, listMovies, recordAudit, updateMovie, upsertMovie } from "../database.js";
+import { addWatchlistItem, areApprovedUsernames, deleteMovie, getMovie, listMovies, recordAudit, updateMovie, upsertMovie } from "../database.js";
 import { readSession } from "../session.js";
 import { rateLimit } from "../rate-limit.js";
 import { validWatchedWith } from "../watched-with.js";
@@ -18,7 +18,14 @@ export default async function movies(request, response) {
   try {
     const session = await readSession(request);
     if (!session) return response.status(401).json({ error: "Create an account or sign in to view your vault." });
-    if (request.method === "GET") return response.status(200).json(await listMovies(session.username));
+    if (request.method === "GET") {
+      const id = request.query?.id;
+      if (id) {
+        const movie = await getMovie(session.username, String(id));
+        return movie ? response.status(200).json(movie) : response.status(404).json({ error: "Movie not found." });
+      }
+      return response.status(200).json(await listMovies(session.username));
+    }
     if (request.method === "PATCH") {
       const changes = { ...(request.body?.changes || {}) };
       if (Object.hasOwn(changes, "watchedWith")) {

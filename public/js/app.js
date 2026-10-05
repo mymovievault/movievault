@@ -1,5 +1,5 @@
 import { startRouter, registerRoute, canGoBack, goBack } from "./router.js";
-import { loadFlatFile, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, loadApprovedUsers, logout } from "./data/storage.js";
+import { loadFlatFile, loadMovie, loadUpcoming, saveMovie, updateMovie, deleteMovie, getSession, loadWatchlists, loadApprovedUsers, logout } from "./data/storage.js";
 import { createLibrary, findByTmdbId } from "./data/library.js";
 import { homePage } from "./pages/home.js";
 import { libraryPage } from "./pages/library.js";
@@ -29,8 +29,13 @@ async function boot() {
       bindAuth(app, MOVIE_API_URL);
       return;
     }
-    const library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
+    let library = createLibrary(await loadFlatFile(MOVIE_API_URL ? `${MOVIE_API_URL}/api/movies` : ""));
     let watchlists = MOVIE_API_URL ? await loadWatchlists(MOVIE_API_URL) : [];
+    let libraryLoadedAt = Date.now();
+    let listsLoadedAt = Date.now();
+    let upcomingLoadedAt = Date.now();
+    let movieDetail = null;
+    let fetchedMovieDetail = false;
     let curatedUpcoming = [];
     try {
       curatedUpcoming = await loadUpcoming(MOVIE_API_URL);
@@ -39,13 +44,22 @@ async function boot() {
         curatedUpcoming = await loadUpcoming();
       } catch {}
     }
+    upcomingLoadedAt = Date.now();
     const tmdbClient = TMDB_READ_TOKEN || MOVIE_API_URL ? createTmdbClient({ token: TMDB_READ_TOKEN, apiUrl: MOVIE_API_URL }) : null;
     const theatreClient = createTheatreClient();
     const render = (content, active) => {
       app.innerHTML = shell(content, active, library, session);
       bindNavigation();
       if (active === "/admin") bindAdmin(app, MOVIE_API_URL);
-      else if (active === "/lists") bindLists(app, MOVIE_API_URL, (lists) => { watchlists = lists; });
+      else if (active === "/lists") {
+        const listView = app.querySelector("[data-lists]");
+        bindLists(app, MOVIE_API_URL, (lists) => {
+          if (listView.isConnected) {
+            watchlists = lists;
+            listsLoadedAt = Date.now();
+          }
+        });
+      }
       else if (active === "/profile") bindProfile(app, MOVIE_API_URL);
       else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render, watchlists);
       else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists);
@@ -75,12 +89,69 @@ async function boot() {
     });
     registerRoute("/movie", (path) => {
       const tmdbId = path.split("/").pop();
-      const movie = library.find(tmdbId)
-        || findByTmdbId(watchlists.flatMap((list) => list.items || []), tmdbId)
-        || findByTmdbId(curatedUpcoming, tmdbId);
+      const movie = fetchedMovieDetail
+        ? movieDetail || findByTmdbId(curatedUpcoming, tmdbId)
+        : library.find(tmdbId) || findByTmdbId(watchlists.flatMap((list) => list.items || []), tmdbId)
+          || findByTmdbId(curatedUpcoming, tmdbId);
       render(movieModal(movie), "");
     });
-    startRouter((route, path) => route(path));
+    let firstRoute = true;
+    let routeRequest = 0;
+    startRouter(async (route, path) => {
+      const request = ++routeRequest;
+      if (firstRoute || !MOVIE_API_URL) {
+        firstRoute = false;
+        route(path);
+        return;
+      }
+      const now = Date.now();
+      const needsLibrary = (path === "/" || path === "/library" || path === "/wishlist" || path.startsWith("/genre/")) && now - libraryLoadedAt > 60_000;
+      const needsLists = (path === "/" || path === "/upcoming" || path.startsWith("/genre/")) && now - listsLoadedAt > 60_000;
+      const needsUpcoming = path === "/upcoming" && now - upcomingLoadedAt > 300_000;
+      const movieId = path.startsWith("/movie/") ? path.split("/").pop() : null;
+      if (!needsLibrary && !needsLists && !needsUpcoming && !movieId) {
+        movieDetail = null;
+        fetchedMovieDetail = false;
+        route(path);
+        return;
+      }
+      app.querySelector("main")?.replaceWith(Object.assign(document.createElement("main"), {
+        className: "loading-screen",
+        textContent: "Refreshing your vault...",
+      }));
+      try {
+        const [movies, lists, upcoming, movie] = await Promise.all([
+          needsLibrary ? loadFlatFile(`${MOVIE_API_URL}/api/movies`) : null,
+          needsLists ? loadWatchlists(MOVIE_API_URL) : null,
+          needsUpcoming ? loadUpcoming(MOVIE_API_URL) : null,
+          movieId ? loadMovie(MOVIE_API_URL, movieId) : null,
+        ]);
+        if (request !== routeRequest) return;
+        if (movies) {
+          library = createLibrary(movies);
+          libraryLoadedAt = Date.now();
+        }
+        if (lists) {
+          watchlists = lists;
+          listsLoadedAt = Date.now();
+        }
+        if (upcoming) {
+          curatedUpcoming = upcoming;
+          upcomingLoadedAt = Date.now();
+        }
+        movieDetail = movie;
+        fetchedMovieDetail = Boolean(movieId);
+        if (movie && library.find(movieId)) library.update(movieId, movie);
+        route(path);
+      } catch {
+        if (request !== routeRequest) return;
+        app.querySelector("main")?.replaceWith(Object.assign(document.createElement("main"), {
+          className: "error-state",
+          innerHTML: `<p>Could not refresh your vault.</p><button class="text-link" data-retry>Retry</button>`,
+        }));
+        app.querySelector("[data-retry]").addEventListener("click", () => window.location.reload());
+      }
+    });
 
   } catch (error) {
     app.innerHTML = `<main class="error-state"><p>Could not open the vault.</p><code>${error.message}</code></main>`;

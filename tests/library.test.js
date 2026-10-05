@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createLibrary, findByTmdbId } from "../public/js/data/library.js";
+import { loadMovie } from "../public/js/data/storage.js";
 
 const records = [
   { tmdbId: 1, title: "Watched", status: "watched", runtime: 120, rating: 8 },
@@ -44,6 +45,25 @@ test("library updates a record without mutating the input", () => {
   library.update(1, { rating: 10 });
   assert.equal(library.find(1).rating, 10);
   assert.equal(records[0].rating, 8);
+});
+
+test("single movie lookup requests only the selected title and treats 404 as unsaved", async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (url, options) => {
+    requests.push({ url, options });
+    return requests.length === 1
+      ? { ok: true, json: async () => ({ tmdbId: "imdb:tt123", title: "Updated title" }) }
+      : { ok: false, status: 404 };
+  };
+  try {
+    assert.equal((await loadMovie("https://movies.example.com", "imdb:tt123")).title, "Updated title");
+    assert.equal(await loadMovie("https://movies.example.com", "imdb:tt456"), null);
+    assert.equal(requests[0].url, "https://movies.example.com/api/movies?id=imdb%3Att123");
+    assert.equal(requests[0].options.credentials, "include");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("library updates and removes namespaced provider IDs", () => {

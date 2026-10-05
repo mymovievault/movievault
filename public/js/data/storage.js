@@ -8,6 +8,13 @@ export async function loadFlatFile(apiUrl = "") {
   return response.json();
 }
 
+export async function loadMovie(apiUrl, id) {
+  const response = await fetch(`${apiUrl}/api/movies?id=${encodeURIComponent(id)}`, { cache: "no-store", credentials: "include" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Could not load movie details (${response.status})`);
+  return response.json();
+}
+
 export async function loadUpcoming(apiUrl = "") {
   const response = await fetch(apiUrl ? `${apiUrl}/api/upcoming` : UPCOMING_URL, { cache: "no-store", credentials: apiUrl ? "include" : "same-origin" });
   if (!response.ok) throw new Error(`Could not load upcoming titles (${response.status})`);

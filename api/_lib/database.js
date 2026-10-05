@@ -371,6 +371,23 @@ export async function listMovies(ownerLogin) {
   return rows.map((row) => mergeMediaRecord(row.catalog_record, row.user_record, row.catalog_id));
 }
 
+export async function getMovie(ownerLogin, mediaId) {
+  const sql = await ready();
+  const rows = await sql`SELECT entry.catalog_id, entry.record AS user_record, c.record AS catalog_record
+    FROM (
+      SELECT m.catalog_id, m.record, 0 AS priority FROM movies m
+      WHERE m.owner_login = ${ownerLogin} AND m.catalog_id = ${mediaId}
+      UNION ALL
+      SELECT i.catalog_id, i.record, 1 AS priority FROM watchlist_items i
+      JOIN watchlists w ON w.id = i.watchlist_id
+      WHERE i.catalog_id = ${mediaId} AND (w.owner_username = ${ownerLogin} OR EXISTS (
+        SELECT 1 FROM watchlist_shares s WHERE s.watchlist_id = w.id AND s.viewer_username = ${ownerLogin}
+      ))
+    ) entry LEFT JOIN media_catalog_details c ON c.media_id = entry.catalog_id
+    ORDER BY entry.priority LIMIT 1`;
+  return rows[0] ? mergeMediaRecord(rows[0].catalog_record, rows[0].user_record, rows[0].catalog_id) : null;
+}
+
 async function catalogRecordFor(sql, mediaId) {
   const rows = await sql`SELECT record FROM media_catalog WHERE media_id = ${mediaId}`;
   return rows[0]?.record || {};
