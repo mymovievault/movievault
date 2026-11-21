@@ -58,8 +58,9 @@ export async function bindLists(root, apiUrl, onListsChanged = () => {}) {
   };
   root.querySelector("[data-create-list]").addEventListener("submit", async (event) => {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.currentTarget));
-    try { await request(`${apiUrl}/api/lists`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); event.currentTarget.reset(); await load(); } catch (error) { window.alert(error.message); }
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    try { await request(`${apiUrl}/api/lists`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); form.reset(); await load(); } catch (error) { window.alert(error.message); }
   });
   await load();
 }
