@@ -137,7 +137,7 @@ async function boot() {
         ? movieDetail || findByTmdbId(curatedUpcoming, tmdbId)
         : library.find(tmdbId) || findByTmdbId(watchlists.flatMap((list) => list.items || []), tmdbId)
           || findByTmdbId(curatedUpcoming, tmdbId);
-      render(movieModal(movie), "");
+      render(movieModal(movie, Boolean(library.find(tmdbId))), "");
     });
     let firstRoute = true;
     let routeRequest = 0;
@@ -291,9 +291,11 @@ function bindLibraryActions(root, library, render, active, searchApprovedUsers, 
     saveButton.disabled = true;
     editStatus.textContent = "Saving...";
     try {
-      const updated = await updateMovie(form.dataset.editMovie, changes, `${MOVIE_API_URL}/api/movies`);
-      library.update(form.dataset.editMovie, updated);
-      render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), active);
+      const id = form.dataset.editMovie;
+      const updated = await updateMovie(id, changes, `${MOVIE_API_URL}/api/movies`);
+      library.update(id, updated);
+      if (root.querySelector(".detail")) render(movieModal(library.find(id), true), active);
+      else render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), active);
     } catch (error) {
       editStatus.textContent = error.message;
       saveButton.disabled = false;

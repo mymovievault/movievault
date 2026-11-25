@@ -5,35 +5,60 @@ export function movieForm() {
   return `<details class="add-movie-panel"><summary class="button button-primary">Add a movie <span>+</span></summary><form class="movie-form" data-add-movie><div class="form-heading"><p class="eyebrow">NEW ENTRY</p><h2>Log what you are watching</h2><p class="form-hint">Search TMDB by title to fill in the film details, then add your viewing information.</p></div><div class="form-grid"><label class="form-wide">Title or series<input name="title" data-title-search required autocomplete="off" placeholder="Start typing a title..." /><div class="search-results" data-title-results></div></label><label>Status<select name="status"><option value="watching">Watching now</option><option value="watched">Watched</option><option value="wishlist">Want to watch</option><option value="upcoming">Upcoming</option></select></label><label>Where are you watching?<select name="watchingMode" data-watching-mode><option value="ott">OTT / streaming</option><option value="theatre">Theatre</option></select></label><label data-ott-field>Region<select name="watchRegion" data-watch-region><option value="IN">India</option><option value="US">United States</option><option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option></select></label><label data-ott-field>OTT platform<input name="ottPlatform" data-ott-platform placeholder="Select a provider after choosing a title" /><div class="search-results" data-ott-results></div></label><input name="ottAvailability" data-ott-availability type="hidden" /><label data-theatre-field hidden>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" placeholder="Search a theatre..." /><div class="search-results" data-theatre-results></div></label><label>Your rating<input name="rating" type="number" min="1" max="10" step="1" placeholder="1–10" /></label><label>Watched date<input name="watchedDate" type="date" /></label><input name="poster" data-poster type="hidden" /><label class="form-wide">Notes<textarea name="notes" rows="3" placeholder="A quick note for future you..."></textarea></label><label class="form-wide">Tags<input name="tags" placeholder="favourite, rewatch" /></label></div><div class="form-actions"><button class="button button-primary" type="submit">Save to vault <span>↗</span></button><button class="text-link" type="reset">Clear form</button></div></form></details>`;
 }
 
-export function movieEditForm(movie) {
+export function movieEditForm(movie, { open = false } = {}) {
   const watchedWith = (movie.watchedWith || []).map((username) => `<span class="watched-with-chip"><span class="watched-with-name">@${escapeHtml(username)}</span><button type="button" class="watched-with-remove" data-remove-watched-with="${escapeAttr(username)}" aria-label="Remove @${escapeAttr(username)}">×</button></span>`).join("");
   const peopleResultsId = `edit-watched-with-results-${escapeAttr(movie.tmdbId)}`;
-  return `<details class="movie-edit"><summary class="button button-quiet">Edit viewing details</summary>
+  const statusOption = (value, label) => `<option value="${value}"${movie.status === value ? " selected" : ""}>${label}</option>`;
+  const isTheatre = movie.watchingMode === "theatre";
+  return `<details class="movie-edit"${open ? " open" : ""}><summary class="button button-quiet">Edit details</summary>
     <form class="movie-edit-form" data-edit-movie="${escapeAttr(movie.tmdbId)}">
-      <label>Where did you watch?<select name="watchingMode"><option value="ott"${movie.watchingMode !== "theatre" ? " selected" : ""}>OTT / streaming</option><option value="theatre"${movie.watchingMode === "theatre" ? " selected" : ""}>Theatre</option></select></label>
-      <label data-edit-ott${movie.watchingMode === "theatre" ? " hidden" : ""}>Streaming service<input name="ottPlatform" value="${escapeAttr(movie.ottPlatform || "")}" placeholder="e.g. Netflix" /></label>
-      <label data-edit-theatre${movie.watchingMode !== "theatre" ? " hidden" : ""}>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" value="${escapeAttr(movie.theatreName || "")}" placeholder="Theatre or venue" /><div class="search-results" data-theatre-results></div></label>
-      ${movie.status === "watched" ? `<fieldset class="watched-with-field" data-watched-with><legend>Watched with</legend><div class="watched-with-selected" data-watched-with-selected>${watchedWith}</div><label class="watched-with-search-label">Add people<input type="search" data-watched-with-search autocomplete="off" placeholder="Search people..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${peopleResultsId}" /></label><div class="search-results watched-with-results" id="${peopleResultsId}" data-watched-with-results role="listbox" aria-label="People to tag"></div><p class="search-status watched-with-status" data-watched-with-status role="status">Type at least 2 characters.</p></fieldset>` : ""}
-      <div class="movie-edit-actions"><button class="button button-primary" type="submit">Save details</button><p class="search-status" data-edit-status role="status"></p></div>
+      <label>Title or series<input name="title" required value="${escapeAttr(movie.title || "")}" /></label>
+      <label>Status<select name="status">${statusOption("watching", "Watching now")}${statusOption("watched", "Watched")}${statusOption("wishlist", "Want to watch / Watchlist")}${statusOption("upcoming", "Upcoming")}</select></label>
+      <label>Where are you watching?<select name="watchingMode"><option value="ott"${!isTheatre ? " selected" : ""}>OTT / streaming</option><option value="theatre"${isTheatre ? " selected" : ""}>Theatre</option></select></label>
+      <label data-edit-ott${isTheatre ? " hidden" : ""}>OTT platform<input name="ottPlatform" value="${escapeAttr(movie.ottPlatform || "")}" placeholder="e.g. Netflix" /></label>
+      <label data-edit-theatre${!isTheatre ? " hidden" : ""}>Theatre name<input name="theatreName" data-theatre-search autocomplete="off" value="${escapeAttr(movie.theatreName || "")}" placeholder="Theatre or venue" /><div class="search-results" data-theatre-results></div></label>
+      <label>Your rating<input name="rating" type="number" min="1" max="10" step="1" value="${escapeAttr(movie.rating ?? "")}" placeholder="1–10" /></label>
+      <label>Watched date<input name="watchedDate" type="date" value="${escapeAttr(movie.watchedDate || "")}" /></label>
+      <fieldset class="watched-with-field" data-watched-with${movie.status !== "watched" ? " hidden" : ""}><legend>Watched with</legend><div class="watched-with-selected" data-watched-with-selected>${watchedWith}</div><label class="watched-with-search-label">Add people<input type="search" data-watched-with-search autocomplete="off" placeholder="Search people..." role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${peopleResultsId}" /></label><div class="search-results watched-with-results" id="${peopleResultsId}" data-watched-with-results role="listbox" aria-label="People to tag"></div><p class="search-status watched-with-status" data-watched-with-status role="status">Type at least 2 characters.</p></fieldset>
+      <label>Notes<textarea name="notes" rows="3" placeholder="A quick note for future you...">${escapeHtml(movie.notes || "")}</textarea></label>
+      <label>Tags<input name="tags" value="${escapeAttr((movie.tags || []).join(", "))}" placeholder="favourite, rewatch" /></label>
+      <div class="movie-edit-actions"><button class="button button-primary" type="submit">Save changes</button><p class="search-status" data-edit-status role="status"></p></div>
     </form>
   </details>`;
 }
 
 export function bindMovieEditForm(form, onSave, searchApprovedUsers, theatreClient) {
-  const getWatchedWith = form.querySelector("[data-watched-with]") ? bindWatchedWithSearch(form, searchApprovedUsers, [...form.querySelectorAll("[data-remove-watched-with]")].map((button) => button.dataset.removeWatchedWith)) : () => [];
+  const getWatchedWith = bindWatchedWithSearch(form, searchApprovedUsers, [...form.querySelectorAll("[data-remove-watched-with]")].map((button) => button.dataset.removeWatchedWith));
   const mode = form.elements.watchingMode;
+  const status = form.elements.status;
   const ottField = form.querySelector("[data-edit-ott]");
   const theatreField = form.querySelector("[data-edit-theatre]");
+  const watchedWithField = form.querySelector("[data-watched-with]");
   const updateLocationFields = () => {
     ottField.hidden = mode.value === "theatre";
     theatreField.hidden = mode.value !== "theatre";
   };
   mode.addEventListener("change", updateLocationFields);
+  status.addEventListener("change", () => { watchedWithField.hidden = status.value !== "watched"; });
   bindTheatreSearch(form, theatreClient);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(form));
-    onSave({ watchingMode: values.watchingMode, ottPlatform: values.ottPlatform.trim(), theatreName: values.theatreName.trim(), ...(form.querySelector("[data-watched-with]") ? { watchedWith: getWatchedWith() } : {}) });
+    const title = values.title.trim();
+    if (!title) return;
+    const isTheatre = values.watchingMode === "theatre";
+    onSave({
+      title,
+      status: values.status,
+      watchingMode: values.watchingMode,
+      ottPlatform: isTheatre ? "" : values.ottPlatform.trim(),
+      theatreName: isTheatre ? values.theatreName.trim() : "",
+      rating: values.rating ? Number(values.rating) : null,
+      watchedDate: values.watchedDate || null,
+      notes: values.notes.trim(),
+      tags: values.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+      watchedWith: values.status === "watched" ? getWatchedWith() : [],
+    });
   });
 }
 

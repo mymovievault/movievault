@@ -1,4 +1,5 @@
 import { escapeAttr, escapeHtml } from "../utils/escape.js";
+import { movieEditForm } from "./movie-form.js";
 
 function personHref(person, fallbackSource = "TMDB") {
   if (!person?.id) return "";
@@ -6,7 +7,7 @@ function personHref(person, fallbackSource = "TMDB") {
   return `#/person/${source}/${encodeURIComponent(person.id)}`;
 }
 
-export function movieModal(movie) {
+export function movieModal(movie, editable = false) {
   if (!movie) return `<main class="error-state"><p>Movie details are unavailable.</p><a class="text-link" href="#/">Return to Overview ↗</a></main>`;
   const watchedWith = movie.watchedWith?.length ? `<p class="detail-watched-with">Watched with ${movie.watchedWith.map(escapeHtml).join(", ")}</p>` : "";
   const genres = movie.genres?.map((genre) => `<a class="detail-fact-link" href="#/genre/${encodeURIComponent(genre)}">${escapeHtml(genre)}</a>`).join(" / ") || "";
@@ -28,5 +29,5 @@ export function movieModal(movie) {
   const productionMarkup = movie.productionCompanies?.length ? `<p class="detail-production"><strong>Production</strong>${movie.productionCompanies.map(escapeHtml).join(" <span>•</span> ")}</p>` : "";
   const taglineMarkup = movie.tagline ? `<p class="detail-tagline">${escapeHtml(movie.tagline)}</p>` : "";
   const sourceMarkup = movie.metadataSource === "Wikidata" && movie.wikidataId ? `<p class="detail-source">Metadata from <a href="https://www.wikidata.org/wiki/${escapeAttr(movie.wikidataId)}" target="_blank" rel="noopener noreferrer">Wikidata</a> (CC0)</p>` : "";
-  return `<main><section class="detail">${posterMarkup}<div class="detail-copy"><p class="eyebrow">${escapeHtml(movie.status?.toUpperCase())} / ${escapeHtml(movie.year)}</p><h1>${escapeHtml(movie.title)}</h1>${taglineMarkup}${factsMarkup}<p class="detail-overview">${escapeHtml(movie.overview)}</p>${castMarkup}${productionMarkup}${sourceMarkup}${watchedWith}${movie.notes ? `<blockquote>“${escapeHtml(movie.notes)}”</blockquote>` : ""}<a class="text-link" href="#${returnRoute}">${returnLabel} ↗</a></div></section></main>`;
+  return `<main><section class="detail">${posterMarkup}<div class="detail-copy"><p class="eyebrow">${escapeHtml(movie.status?.toUpperCase())} / ${escapeHtml(movie.year)}</p><h1>${escapeHtml(movie.title)}</h1>${taglineMarkup}${factsMarkup}<p class="detail-overview">${escapeHtml(movie.overview)}</p>${castMarkup}${productionMarkup}${sourceMarkup}${watchedWith}${movie.notes ? `<blockquote>“${escapeHtml(movie.notes)}”</blockquote>` : ""}${editable ? movieEditForm(movie, { open: false }) : ""}<a class="text-link" href="#${returnRoute}">${returnLabel} ↗</a></div></section></main>`;
 }
