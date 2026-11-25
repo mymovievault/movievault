@@ -192,3 +192,8 @@ blockquote { max-width: 480px; margin: 0 0 35px; padding-left: 18px; color: #e9e
 @media (max-width: 600px) { .library-filters { flex-direction: column; } .library-filters label { justify-content: space-between; } .library-filters select { flex: 1; } }
 @media (max-width: 720px) { .upcoming-filters { display: none; } .upcoming-filter-select { display: flex; } }
 @media (max-width: 720px) { .list-tabs { display: none; } .list-select { display: flex; } .list-panels { padding: 14px; } .list-movie-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; } }
+.watched-with-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+.watched-with-tabs .is-active { color: #d8a35d; border-color: #d8a35d; }
+.watched-with-group { margin-top: 36px; }
+.watched-with-group h2 { margin: 0 0 16px; font-size: 22px; }
+.watched-with-group[hidden] { display: none; }

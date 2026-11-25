@@ -17,6 +17,7 @@ import { adminPage, bindAdmin } from "./components/admin.js";
 import { listsPage, bindLists } from "./pages/lists.js";
 import { profilePage, bindProfile } from "./pages/profile.js";
 import { genreMovies, genrePage } from "./pages/genre.js";
+import { watchedWithPage, bindWatchedWith } from "./pages/watched-with.js";
 import { personPage } from "./pages/person.js";
 import { escapeHtml } from "./utils/escape.js";
 
@@ -103,6 +104,7 @@ async function boot() {
           }
         });
       }
+      else if (active === "/watched-with") bindWatchedWith(app);
       else if (active === "/profile") bindProfile(app, MOVIE_API_URL);
       else if (active === "/upcoming") bindUpcoming(app, curatedUpcoming, library, render, watchlists);
       else bindShelfControls(library, render, tmdbClient, theatreClient, active, watchlists);
@@ -110,6 +112,7 @@ async function boot() {
 
     registerRoute("/", () => render(homePage(library, watchlists), "/"));
     registerRoute("/library", () => render(libraryPage(library, ["watched", "watching"], "Watched & Watching"), "/library"));
+    registerRoute("/watched-with", () => render(watchedWithPage(library), "/watched-with"));
     registerRoute("/wishlist", () => render(wishlistPage(library, "wishlist", "Wishlist"), "/wishlist"));
     registerRoute("/upcoming", () => render(upcomingPage(curatedUpcoming, watchlists), "/upcoming"));
     registerRoute("/admin", () => render(adminPage(), "/admin"));
@@ -151,7 +154,7 @@ async function boot() {
       const now = Date.now();
       if (path === "/invitations" || Date.now() - invitationsLoadedAt > 30_000) await refreshInvitations();
       if (request !== routeRequest) return;
-      const needsLibrary = (path === "/" || path === "/library" || path === "/wishlist" || path.startsWith("/genre/")) && now - libraryLoadedAt > 60_000;
+      const needsLibrary = (path === "/" || path === "/library" || path === "/watched-with" || path === "/wishlist" || path.startsWith("/genre/")) && now - libraryLoadedAt > 60_000;
       const needsLists = (path === "/" || path === "/upcoming" || path.startsWith("/genre/")) && now - listsLoadedAt > 60_000;
       const needsUpcoming = path === "/upcoming" && now - upcomingLoadedAt > 300_000;
       const movieId = path.startsWith("/movie/") ? path.split("/").pop() : null;
@@ -208,7 +211,7 @@ function shell(content, active, library, session, invitationCount = 0) {
   const stats = library.stats();
   const adminLink = session.role === "admin" ? navItem("/admin", "Admin", active) : "";
   const backButton = canGoBack() ? `<button type="button" class="back-button" data-back aria-label="Go back" title="Go back"><span aria-hidden="true">&larr;</span></button>` : "";
-  return `<header class="topbar"><div class="brand-group">${backButton}<a class="brand" href="#/">MOVIE <span>VAULT</span></a></div><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><details class="account-menu"><summary class="account-trigger"><span class="account-avatar" aria-hidden="true">${escapeHtml(session.login.slice(0, 1).toUpperCase())}</span><span class="account-name">${escapeHtml(session.login)}</span>${invitationCount ? `<span class="invitation-count" aria-label="${invitationCount} pending invitations">${invitationCount}</span>` : ""}<span aria-hidden="true">⌄</span></summary><div class="account-menu-panel"><a class="account-menu-item" href="#/invitations" data-route="/invitations">Invitations</a><a class="account-menu-item" href="#/profile" data-route="/profile">Profile &amp; settings</a><button class="account-menu-item" data-logout>Sign out</button></div></details></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
+  return `<header class="topbar"><div class="brand-group">${backButton}<a class="brand" href="#/">MOVIE <span>VAULT</span></a></div><nav>${navItem("/", "Overview", active)}${navItem("/library", "Watched", active)}${navItem("/watched-with", "Watched with", active)}${navItem("/lists", "Watchlists", active)}${navItem("/upcoming", "Upcoming", active)}${adminLink}</nav><details class="account-menu"><summary class="account-trigger"><span class="account-avatar" aria-hidden="true">${escapeHtml(session.login.slice(0, 1).toUpperCase())}</span><span class="account-name">${escapeHtml(session.login)}</span>${invitationCount ? `<span class="invitation-count" aria-label="${invitationCount} pending invitations">${invitationCount}</span>` : ""}<span aria-hidden="true">⌄</span></summary><div class="account-menu-panel"><a class="account-menu-item" href="#/invitations" data-route="/invitations">Invitations</a><a class="account-menu-item" href="#/profile" data-route="/profile">Profile &amp; settings</a><button class="account-menu-item" data-logout>Sign out</button></div></details></header>${content}<footer><span>PERSONAL CINEMA ARCHIVE</span><span>${stats.total} TITLES / DATABASE STORAGE</span></footer>`;
 }
 
 function invitationsPage(invitations, error) {
